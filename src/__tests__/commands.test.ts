@@ -1,6 +1,7 @@
 import { stringify } from 'yaml';
 import { runCli } from '../run';
 import { configFilePath } from '../paths';
+import { CLI_VERSION } from '../version';
 import { createRecordingClient, makeCtx } from './helpers';
 
 function withChannel(ctxFilesWrite: (ctx: ReturnType<typeof makeCtx>['ctx']) => void) {
@@ -103,7 +104,7 @@ describe('commands', () => {
     const { ctx, stdout } = withChannel(() => undefined);
     const code = await runCli(['version'], ctx);
     expect(code).toBe(0);
-    expect(stdout.toString()).toMatch(/cli\s+0\.1\.0/);
+    expect(stdout.toString()).toMatch(new RegExp(`cli\\s+${CLI_VERSION.replace(/\./g, '\\.')}`));
     expect(stdout.toString()).toMatch(/sdk\s+/);
   });
 
