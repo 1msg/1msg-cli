@@ -54,13 +54,18 @@ export function createRecordingClient(): { client: Client; calls: Array<{ method
       return { ok: true };
     });
 
-  const proxy = (prefix: string) =>
-    new Proxy(
+  const proxy = (prefix: string) => {
+    const cache: Record<string, ReturnType<typeof fn>> = {};
+    return new Proxy(
       {},
       {
-        get: (_t, prop: string) => fn(`${prefix}.${prop}`),
+        get: (_t, prop: string) => {
+          if (!cache[prop]) cache[prop] = fn(`${prefix}.${prop}`);
+          return cache[prop];
+        },
       },
     );
+  };
 
   const client = {
     config: { token: 'test-token', baseUrl: 'https://api.1msg.io', instanceId: 'ODI1' },

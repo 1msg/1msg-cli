@@ -1,8 +1,8 @@
 import type { Command } from 'commander';
 import type { CliContext } from './context';
 import { parsePhone } from './dest';
-import { usage } from './errors';
-import { ok, printApiResult, withClient } from './execute';
+import { CliExit, EXIT_API_4XX, usage } from './errors';
+import { ok, outputOpts, printApiResult, withClient } from './execute';
 import {
   basenameOf,
   fileToDataUri,
@@ -12,7 +12,17 @@ import {
   readJsonFile,
 } from './io';
 import { globalsFrom } from './local';
-import { asArray, asRecord, pickString, printKv, printTable } from './output';
+import {
+  asArray,
+  asRecord,
+  meErrorMessage,
+  meProfileRows,
+  pickString,
+  printError,
+  printKv,
+  printMe,
+  printTable,
+} from './output';
 
 function settingsApi(client: { channel: unknown }) {
   return client.channel as {
@@ -36,12 +46,11 @@ export async function handleChannelInfo(ctx: CliContext, cmd: Command): Promise<
   const combined = { status, me };
   printApiResult(ctx, flags, combined, () => {
     const s = asRecord(status);
-    const m = asRecord(me);
     printKv(ctx.stdout, [
       ['status', s.status],
       ['accountStatus', s.accountStatus],
       ['mm_lite_available', s.mm_lite_available],
-      ...Object.entries(m).filter(([key]) => key !== 'token'),
+      ...meProfileRows(me),
     ]);
   });
   return ok();
@@ -64,9 +73,12 @@ export async function handleStatus(ctx: CliContext, cmd: Command): Promise<numbe
 export async function handleMe(ctx: CliContext, cmd: Command): Promise<number> {
   const flags = globalsFrom(cmd);
   const body = await withClient(ctx, flags, (client) => client.profile.getMe(client.config.token));
-  printApiResult(ctx, flags, body, () => {
-    printKv(ctx.stdout, Object.entries(asRecord(body)));
-  });
+  const errorMessage = meErrorMessage(body);
+  if (errorMessage && !flags.json) {
+    printError(ctx.stderr, outputOpts(flags, ctx), new Error(errorMessage));
+    throw new CliExit(EXIT_API_4XX);
+  }
+  printApiResult(ctx, flags, body, () => printMe(ctx.stdout, body, ctx.stderr));
   return ok();
 }
 

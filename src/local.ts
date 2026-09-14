@@ -156,8 +156,15 @@ export async function handleInit(
     verify?: boolean;
   },
 ): Promise<number> {
-  const interactive = !opts.tokenStdin && ctx.stdinIsTTY && (!opts.baseUrl || !opts.instanceId);
-  const channel = await promptChannel(ctx, opts, interactive);
+  const flags = globalsFrom(cmd);
+  const input = {
+    name: opts.name,
+    baseUrl: opts.baseUrl ?? flags.baseUrl,
+    instanceId: opts.instanceId ?? flags.instanceId,
+    tokenStdin: opts.tokenStdin,
+  };
+  const interactive = !input.tokenStdin && ctx.stdinIsTTY && (!input.baseUrl || !input.instanceId);
+  const channel = await promptChannel(ctx, input, interactive);
   let makeDefault = true;
   if (interactive) {
     const answer = (await ctx.prompt.question('Set as default? [Y/n]: ')).trim().toLowerCase();
@@ -166,7 +173,13 @@ export async function handleInit(
   upsertChannel(ctx, { ...channel, makeDefault });
   ctx.stderr.write(`Wrote ${configFilePath(ctx)}\n`);
   if (opts.verify === false) return ok();
-  await verifyStatus(ctx, { ...globalsFrom(cmd), channel: channel.name, token: channel.token, baseUrl: channel.baseUrl, instanceId: channel.instanceId });
+  await verifyStatus(ctx, {
+    ...flags,
+    channel: channel.name,
+    token: channel.token,
+    baseUrl: channel.baseUrl,
+    instanceId: channel.instanceId,
+  });
   return ok();
 }
 
@@ -182,15 +195,18 @@ export async function handleChannelAdd(
     verify?: boolean;
   },
 ): Promise<number> {
-  const nonInteractive = Boolean(opts.name && opts.baseUrl && (opts.instanceId || envInstanceId(ctx)));
+  const flags = globalsFrom(cmd);
+  const nonInteractive = Boolean(
+    opts.name && (opts.baseUrl || flags.baseUrl) && (opts.instanceId || flags.instanceId || envInstanceId(ctx)),
+  );
   const interactive = !nonInteractive;
   if (!interactive && !opts.name) usage('--name is required', '1msg channel add --help');
   const channel = await promptChannel(
     ctx,
     {
       name: opts.name,
-      baseUrl: opts.baseUrl,
-      instanceId: opts.instanceId || envInstanceId(ctx),
+      baseUrl: opts.baseUrl ?? flags.baseUrl,
+      instanceId: opts.instanceId || flags.instanceId || envInstanceId(ctx),
       tokenStdin: opts.tokenStdin,
     },
     interactive,
