@@ -3,6 +3,7 @@ import { runCli } from '../run';
 import { configFilePath } from '../paths';
 import { CLI_VERSION } from '../version';
 import { createRecordingClient, makeCtx } from './helpers';
+import { releaseStdio } from '../context';
 
 function withChannel(ctxFilesWrite: (ctx: ReturnType<typeof makeCtx>['ctx']) => void) {
   const bundle = createRecordingClient();
@@ -190,5 +191,160 @@ describe('commands', () => {
     const code = await runCli(['status'], ctx);
     expect(code).toBe(5);
     expect(stderr.toString()).toContain('no channel configured — run 1msg init');
+  });
+
+  it('me prints labeled profile fields in stable order', async () => {
+    const { ctx, stdout } = withChannel(() => undefined);
+    const code = await runCli(['me'], ctx);
+    expect(code).toBe(0);
+    expect(stdout.toString()).toBe('phone  12020721369\nabout  Available\n');
+  });
+
+  it('me --json is the raw GET /me body', async () => {
+    const { ctx, stdout } = withChannel(() => undefined);
+    const code = await runCli(['me', '--json'], ctx);
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout.toString())).toEqual({ about: 'Available', phone: '12020721369' });
+  });
+
+  it('me unwraps data[] and flattens phone objects', async () => {
+    const bundle = createRecordingClient();
+    (bundle.client.profile.getMe as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          about: 'Shop',
+          websites: ['https://a.example', 'https://b.example'],
+          profile_picture_url: 'https://cdn.example/p.jpg',
+        },
+      ],
+      phone: { display_phone_number: '12020721369' },
+    });
+    const { ctx, stdout } = makeCtx({ createClient: () => bundle.client });
+    ctx.fs.writeFileSync(
+      configFilePath(ctx),
+      stringify({
+        version: 1,
+        default_channel: 'prod',
+        channels: {
+          prod: { base_url: 'https://api.1msg.io', instance_id: 'ODI1', token: 'file-token' },
+        },
+      }),
+    );
+    const code = await runCli(['me'], ctx);
+    expect(code).toBe(0);
+    expect(stdout.toString()).toContain('phone     12020721369');
+    expect(stdout.toString()).toContain('about     Shop');
+    expect(stdout.toString()).toContain('websites  https://a.example, https://b.example');
+    expect(stdout.toString()).toContain('photo     https://cdn.example/p.jpg');
+    expect(stdout.toString()).not.toContain('display_phone_number');
+    expect(stdout.toString()).not.toContain('profile_picture_url');
+  });
+
+  it('me with only {error} exits 2 and explains', async () => {
+    const bundle = createRecordingClient();
+    (bundle.client.profile.getMe as jest.Mock).mockResolvedValueOnce({ error: 'wrong request' });
+    const { ctx, stdout, stderr } = makeCtx({ createClient: () => bundle.client });
+    ctx.fs.writeFileSync(
+      configFilePath(ctx),
+      stringify({
+        version: 1,
+        default_channel: 'prod',
+        channels: {
+          prod: { base_url: 'https://api.1msg.io', instance_id: 'ODI1', token: 'file-token' },
+        },
+      }),
+    );
+    const code = await runCli(['me'], ctx);
+    expect(code).toBe(2);
+    expect(stdout.toString()).toBe('');
+    expect(stderr.toString()).toContain('wrong request');
+  });
+
+  it('me empty profile tells the user what happened', async () => {
+    const bundle = createRecordingClient();
+    (bundle.client.profile.getMe as jest.Mock).mockResolvedValueOnce({});
+    const { ctx, stdout, stderr } = makeCtx({ createClient: () => bundle.client });
+    ctx.fs.writeFileSync(
+      configFilePath(ctx),
+      stringify({
+        version: 1,
+        default_channel: 'prod',
+        channels: {
+          prod: { base_url: 'https://api.1msg.io', instance_id: 'ODI1', token: 'file-token' },
+        },
+      }),
+    );
+    const code = await runCli(['me'], ctx);
+    expect(code).toBe(0);
+    expect(stdout.toString()).toBe('');
+    expect(stderr.toString()).toContain('empty WhatsApp Business profile');
+    expect(stderr.toString()).toContain('1msg me --json');
+  });
+
+  it('init --token-stdin writes config and verifies status', async () => {
+    const bundle = createRecordingClient();
+    const { ctx, stdout, stderr, files } = makeCtx({ createClient: () => bundle.client, env: {} });
+    ctx.readStdin = async () => 'tok-from-stdin';
+    const code = await runCli(
+      [
+        'init',
+        '--name',
+        'prod',
+        '--base-url',
+        'https://api.1msg.io',
+        '--instance-id',
+        'ODI1',
+        '--token-stdin',
+      ],
+      ctx,
+    );
+    expect(code).toBe(0);
+    expect(stderr.toString()).toMatch(/^Wrote /);
+    expect(stdout.toString()).toContain('status');
+    expect(bundle.calls.some((c) => c.method === 'channel.getStatus')).toBe(true);
+    const configPath = [...files.keys()].find((k) => k.endsWith('config.yaml'));
+    expect(configPath).toBeDefined();
+    expect(String(files.get(configPath!))).toContain('tok-from-stdin');
+  });
+
+  it('init verify error still returns and does not hang the command', async () => {
+    const bundle = createRecordingClient();
+    (bundle.client.channel.getStatus as jest.Mock).mockRejectedValueOnce({
+      response: {
+        status: 401,
+        text: async () => JSON.stringify({ error: 'invalid or expired token' }),
+      },
+    });
+    const { ctx, stderr } = makeCtx({ createClient: () => bundle.client, env: {} });
+    ctx.readStdin = async () => 'bad-token';
+    const code = await runCli(
+      [
+        'init',
+        '--name',
+        'prod',
+        '--base-url',
+        'https://api.1msg.io',
+        '--instance-id',
+        'ODI1',
+        '--token-stdin',
+      ],
+      ctx,
+    );
+    expect(code).toBe(2);
+    expect(stderr.toString()).toContain('Wrote ');
+    expect(stderr.toString()).toContain('invalid or expired token (HTTP 401)');
+  });
+});
+
+describe('releaseStdio', () => {
+  it('restores cooked TTY and pauses stdin', () => {
+    const stdin = {
+      isTTY: true,
+      setRawMode: jest.fn(),
+      pause: jest.fn(),
+    };
+    releaseStdio(stdin as unknown as NodeJS.ReadStream);
+    expect(stdin.setRawMode).toHaveBeenCalledWith(false);
+    expect(stdin.pause).toHaveBeenCalled();
   });
 });

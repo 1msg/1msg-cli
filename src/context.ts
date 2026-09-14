@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import readline from 'node:readline/promises';
 import { Writable } from 'stream';
 import { createClient, type Client, type ClientConfigOptions } from '@1msg/sdk';
 
@@ -40,28 +41,38 @@ function collectStream(stream: NodeJS.ReadableStream): Promise<string> {
   });
 }
 
-function question(stdin: NodeJS.ReadableStream, stdout: Writable, query: string): Promise<string> {
-  stdout.write(query);
-  return new Promise((resolve, reject) => {
-    const readable = stdin as NodeJS.ReadableStream & {
-      setEncoding?: (enc: BufferEncoding) => void;
-    };
-    readable.setEncoding?.('utf8');
-    const onData = (chunk: string | Buffer) => {
-      cleanup();
-      resolve(String(chunk).replace(/\r?\n$/, ''));
-    };
-    const onError = (err: Error) => {
-      cleanup();
-      reject(err);
-    };
-    const cleanup = () => {
-      stdin.off('data', onData);
-      stdin.off('error', onError);
-    };
-    stdin.on('data', onData);
-    stdin.on('error', onError);
+function pauseStdin(stdin: NodeJS.ReadableStream): void {
+  const stream = stdin as NodeJS.ReadStream;
+  try {
+    if (typeof stream.pause === 'function') stream.pause();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Restore cooked TTY and drop stdin so the process can exit after prompts. */
+export function releaseStdio(stdin: NodeJS.ReadableStream = process.stdin): void {
+  const tty = stdin as NodeJS.ReadStream;
+  try {
+    if (typeof tty.setRawMode === 'function' && tty.isTTY) tty.setRawMode(false);
+  } catch {
+    /* ignore */
+  }
+  pauseStdin(stdin);
+}
+
+async function question(stdin: NodeJS.ReadableStream, stdout: Writable, query: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: stdin,
+    output: stdout,
+    terminal: false,
   });
+  try {
+    return await rl.question(query);
+  } finally {
+    rl.close();
+    pauseStdin(stdin);
+  }
 }
 
 async function hiddenQuestion(
@@ -74,40 +85,49 @@ async function hiddenQuestion(
   if (typeof tty.setRawMode !== 'function') {
     return question(stdin, stdout, '');
   }
+  const wasRaw = Boolean(tty.isRaw);
   tty.setRawMode(true);
-  return new Promise((resolve, reject) => {
-    let value = '';
-    const onData = (chunk: Buffer | string) => {
-      const text = String(chunk);
-      if (text === '\n' || text === '\r' || text === '\u0004') {
+  try {
+    return await new Promise((resolve, reject) => {
+      let value = '';
+      const onData = (chunk: Buffer | string) => {
+        const text = String(chunk);
+        if (text === '\n' || text === '\r' || text === '\u0004') {
+          cleanup();
+          stdout.write('\n');
+          resolve(value);
+          return;
+        }
+        if (text === '\u0003') {
+          cleanup();
+          reject(new Error('cancelled'));
+          return;
+        }
+        if (text === '\u007f' || text === '\b') {
+          value = value.slice(0, -1);
+          return;
+        }
+        value += text;
+      };
+      const onError = (err: Error) => {
         cleanup();
-        stdout.write('\n');
-        resolve(value);
-        return;
-      }
-      if (text === '\u0003') {
-        cleanup();
-        reject(new Error('cancelled'));
-        return;
-      }
-      if (text === '\u007f' || text === '\b') {
-        value = value.slice(0, -1);
-        return;
-      }
-      value += text;
-    };
-    const onError = (err: Error) => {
-      cleanup();
-      reject(err);
-    };
-    const cleanup = () => {
-      if (typeof tty.setRawMode === 'function') tty.setRawMode(false);
-      stdin.off('data', onData);
-      stdin.off('error', onError);
-    };
-    stdin.on('data', onData);
-    stdin.on('error', onError);
-  });
+        reject(err);
+      };
+      const cleanup = () => {
+        stdin.off('data', onData);
+        stdin.off('error', onError);
+      };
+      stdin.on('data', onData);
+      stdin.on('error', onError);
+    });
+  } finally {
+    try {
+      tty.setRawMode(wasRaw);
+    } catch {
+      /* ignore */
+    }
+    pauseStdin(stdin);
+  }
 }
 
 export function createDefaultContext(overrides: Partial<CliContext> = {}): CliContext {

@@ -128,3 +128,94 @@ export function pickString(obj: Record<string, unknown>, keys: string[]): string
   }
   return '';
 }
+
+const ME_FIELDS = [
+  'phone',
+  'about',
+  'description',
+  'address',
+  'email',
+  'vertical',
+  'websites',
+  'photo',
+] as const;
+
+const ME_SKIP = new Set<string>([
+  ...ME_FIELDS,
+  'token',
+  'messaging_product',
+  'profile_picture_url',
+  'error',
+]);
+
+function flattenPhone(value: unknown): unknown {
+  if (value === undefined || value === null) return value;
+  if (typeof value !== 'object' || Array.isArray(value)) return value;
+  return (
+    pickString(value as Record<string, unknown>, [
+      'phone',
+      'display_phone_number',
+      'displayPhoneNumber',
+      'phone_number',
+      'id',
+    ]) || value
+  );
+}
+
+/** Normalize GET /me bodies (envelope, phone object, websites[]) into kv fields. */
+export function normalizeMe(body: unknown): Record<string, unknown> {
+  if (body === undefined || body === null) return {};
+  if (typeof body === 'string' || typeof body === 'number' || typeof body === 'boolean') {
+    return { phone: String(body) };
+  }
+  let rec = asRecord(body);
+  if (Array.isArray(rec.data) && rec.data[0] && typeof rec.data[0] === 'object') {
+    const inner = asRecord(rec.data[0]);
+    const { data: _data, ...outer } = rec;
+    rec = { ...inner };
+    for (const [key, value] of Object.entries(outer)) {
+      if (value !== undefined) rec[key] = value;
+    }
+  }
+  if (rec.phone !== undefined) rec.phone = flattenPhone(rec.phone);
+  if (!rec.photo && typeof rec.profile_picture_url === 'string') {
+    rec.photo = rec.profile_picture_url;
+  }
+  if (Array.isArray(rec.websites)) {
+    rec.websites = rec.websites.map((item) => String(item).trim()).filter(Boolean).join(', ');
+  }
+  return rec;
+}
+
+export function meErrorMessage(body: unknown): string | undefined {
+  const rec = asRecord(body);
+  if (typeof rec.error !== 'string' || !rec.error.trim()) return undefined;
+  const profile = normalizeMe(body);
+  const hasProfile = ME_FIELDS.some((key) => {
+    const value = profile[key];
+    return value !== undefined && value !== null && value !== '';
+  });
+  if (hasProfile) return undefined;
+  return rec.error.trim();
+}
+
+export function meProfileRows(body: unknown): Array<[string, unknown]> {
+  const rec = normalizeMe(body);
+  const rows: Array<[string, unknown]> = ME_FIELDS.map((key) => [key, rec[key]]);
+  for (const [key, value] of Object.entries(rec)) {
+    if (ME_SKIP.has(key)) continue;
+    rows.push([key, value]);
+  }
+  return rows;
+}
+
+export function printMe(stdout: Writable, body: unknown, emptyHint?: Writable): void {
+  const rows = meProfileRows(body);
+  const present = rows.filter(([, value]) => value !== undefined && value !== null && value !== '');
+  if (present.length === 0) {
+    emptyHint?.write('empty WhatsApp Business profile (GET /me)\n');
+    emptyHint?.write('See:  1msg me --json\n');
+    return;
+  }
+  printKv(stdout, rows);
+}
