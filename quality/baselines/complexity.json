@@ -3,11 +3,11 @@
   "adoptionBase": "e5c0a856387326a9786ee9669441fb787de36926",
   "entries": [
     {
-      "key": "src/errors.ts|complexity|normalizeThrown|0",
+      "key": "src/errors.ts|complexity|[[\"FunctionDeclaration\",\"normalizeThrown\",\"instance\"]]",
       "value": 23,
       "path": "src/errors.ts",
       "rule": "complexity",
-      "scope": "normalizeThrown",
+      "scope": "[[\"FunctionDeclaration\",\"normalizeThrown\",\"instance\"]]",
       "owner": "1MSG SDK/tooling maintainers",
       "expires": "2026-12-11",
       "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
@@ -17,11 +17,11 @@
       }
     },
     {
-      "key": "src/errors.ts|sonarjs/cognitive-complexity|normalizeThrown|0",
+      "key": "src/errors.ts|sonarjs/cognitive-complexity|[[\"FunctionDeclaration\",\"normalizeThrown\",\"instance\"]]",
       "value": 18,
       "path": "src/errors.ts",
       "rule": "sonarjs/cognitive-complexity",
-      "scope": "normalizeThrown",
+      "scope": "[[\"FunctionDeclaration\",\"normalizeThrown\",\"instance\"]]",
       "owner": "1MSG SDK/tooling maintainers",
       "expires": "2026-12-11",
       "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
@@ -31,11 +31,11 @@
       }
     },
     {
-      "key": "src/local.ts|sonarjs/cognitive-complexity|promptChannel|0",
+      "key": "src/local.ts|sonarjs/cognitive-complexity|[[\"FunctionDeclaration\",\"promptChannel\",\"instance\"]]",
       "value": 18,
       "path": "src/local.ts",
       "rule": "sonarjs/cognitive-complexity",
-      "scope": "promptChannel",
+      "scope": "[[\"FunctionDeclaration\",\"promptChannel\",\"instance\"]]",
       "owner": "1MSG SDK/tooling maintainers",
       "expires": "2026-12-11",
       "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
@@ -45,11 +45,11 @@
       }
     },
     {
-      "key": "src/program.ts|max-lines-per-function|createProgram|0",
+      "key": "src/program.ts|max-lines-per-function|[[\"FunctionDeclaration\",\"createProgram\",\"instance\"]]",
       "value": 421,
       "path": "src/program.ts",
       "rule": "max-lines-per-function",
-      "scope": "createProgram",
+      "scope": "[[\"FunctionDeclaration\",\"createProgram\",\"instance\"]]",
       "owner": "1MSG SDK/tooling maintainers",
       "expires": "2026-12-11",
       "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
@@ -59,7 +59,7 @@
       }
     },
     {
-      "key": "src/program.ts|max-lines|<file>|0",
+      "key": "src/program.ts|max-lines|<file>",
       "value": 506,
       "path": "src/program.ts",
       "rule": "max-lines",
@@ -73,7 +73,7 @@
       }
     },
     {
-      "key": "src/rest.ts|max-lines|<file>|0",
+      "key": "src/rest.ts|max-lines|<file>",
       "value": 648,
       "path": "src/rest.ts",
       "rule": "max-lines",
@@ -87,11 +87,11 @@
       }
     },
     {
-      "key": "src/send.ts|complexity|handleMessageContact|0",
+      "key": "src/send.ts|complexity|[[\"FunctionDeclaration\",\"handleMessageContact\",\"instance\"]]",
       "value": 21,
       "path": "src/send.ts",
       "rule": "complexity",
-      "scope": "handleMessageContact",
+      "scope": "[[\"FunctionDeclaration\",\"handleMessageContact\",\"instance\"]]",
       "owner": "1MSG SDK/tooling maintainers",
       "expires": "2026-12-11",
       "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
@@ -101,7 +101,7 @@
       }
     },
     {
-      "key": "src/send.ts|max-lines|<file>|0",
+      "key": "src/send.ts|max-lines|<file>",
       "value": 713,
       "path": "src/send.ts",
       "rule": "max-lines",
@@ -115,11 +115,11 @@
       }
     },
     {
-      "key": "src/send.ts|max-params|<callback>|0",
+      "key": "src/send.ts|max-params|[[\"FunctionDeclaration\",\"handleMessageCarousel\",\"instance\"],[\"VariableDeclaration\",\"body\"],[\"CallExpression\",[\"identifier\",\"withClient\"],2],[\"ArrowFunction\",\"<anonymous>\",\"instance\"]]",
       "value": 7,
       "path": "src/send.ts",
       "rule": "max-params",
-      "scope": "<callback>",
+      "scope": "[[\"FunctionDeclaration\",\"handleMessageCarousel\",\"instance\"],[\"VariableDeclaration\",\"body\"],[\"CallExpression\",[\"identifier\",\"withClient\"],2],[\"ArrowFunction\",\"<anonymous>\",\"instance\"]]",
       "owner": "1MSG SDK/tooling maintainers",
       "expires": "2026-12-11",
       "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
@@ -129,11 +129,11 @@
       }
     },
     {
-      "key": "src/send.ts|sonarjs/cognitive-complexity|handleMessageContact|0",
+      "key": "src/send.ts|sonarjs/cognitive-complexity|[[\"FunctionDeclaration\",\"handleMessageContact\",\"instance\"]]",
       "value": 21,
       "path": "src/send.ts",
       "rule": "sonarjs/cognitive-complexity",
-      "scope": "handleMessageContact",
+      "scope": "[[\"FunctionDeclaration\",\"handleMessageContact\",\"instance\"]]",
       "owner": "1MSG SDK/tooling maintainers",
       "expires": "2026-12-11",
       "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
