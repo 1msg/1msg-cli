@@ -1,4 +1,5 @@
-import path from 'path';
+import path from 'node:path';
+
 import type { CliContext } from './context';
 
 export function configFilePath(ctx: CliContext): string {

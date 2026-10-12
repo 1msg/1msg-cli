@@ -1,5 +1,7 @@
-import path from 'path';
+import path from 'node:path';
+
 import type { CliContext } from './context';
+
 import { COMPLETION_COMMANDS } from './commands';
 import { channelNames, loadConfig } from './config';
 import { cacheFilePath } from './paths';
@@ -22,11 +24,7 @@ export function loadCompletionCache(ctx: CliContext): CompletionCache | null {
   }
 }
 
-export function writeCompletionCache(
-  ctx: CliContext,
-  channel: string,
-  templates: string[],
-): void {
+export function writeCompletionCache(ctx: CliContext, channel: string, templates: string[]): void {
   const filePath = cacheFilePath(ctx);
   const parent = path.dirname(filePath);
   ctx.fs.mkdirSync(parent, { recursive: true });

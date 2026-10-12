@@ -31,7 +31,23 @@
     "clean": "rm -rf dist",
     "start": "node dist/index.js",
     "test": "jest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc -p tsconfig.quality.json",
+    "lint:static": "node tools/quality/node_modules/eslint/bin/eslint.js . --max-warnings=0",
+    "lint:typed": "node tools/quality/node_modules/eslint/bin/eslint.js -c eslint.typed.config.mjs src --max-warnings=0",
+    "lint:unused:production": "node tools/quality/run.mjs unused-production",
+    "lint:unused:full": "node tools/quality/run.mjs unused-full",
+    "lint:duplicates": "node tools/quality/run.mjs duplicates",
+    "quality:guards": "node tools/quality/run.mjs guards",
+    "lint:arch": "node tools/quality/node_modules/dependency-cruiser/bin/dependency-cruiser.mjs --config .dependency-cruiser.cjs src",
+    "test:quality": "node scripts/quality-negative.mjs src",
+    "lint:complexity": "node tools/quality/run.mjs report --kind eslint --name complexity -- node tools/quality/node_modules/eslint/bin/eslint.js -c eslint.complexity.config.mjs . --format json",
+    "lint:duplicates:full": "node tools/quality/run.mjs duplicates-full",
+    "format:check": "node tools/quality/node_modules/prettier/bin/prettier.cjs --check .",
+    "format": "node tools/quality/node_modules/prettier/bin/prettier.cjs --write .",
+    "test:pack": "node scripts/pack-smoke.mjs",
+    "test:preset": "node --test tools/quality/test/*.test.mjs",
+    "hooks:install": "node tools/quality/node_modules/husky/bin.js"
   },
   "dependencies": {
     "@1msg/sdk": "^1.0.4",
@@ -46,6 +62,10 @@
     "typescript": "^5.1.3"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "24.x"
+  },
+  "packageManager": "npm@11.17.0",
+  "lint-staged": {
+    "*.{js,ts,mjs,cjs,json,md,yml,yaml}": "node tools/quality/node_modules/prettier/bin/prettier.cjs --write"
   }
 }

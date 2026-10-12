@@ -1,0 +1,26 @@
+export default {
+  schemaVersion: 1,
+  profile: 'A',
+  defaultBranch: 'main',
+  sourceRoots: [
+    'src',
+    'scripts',
+    'jest.config.js',
+    'eslint.config.mjs',
+    'eslint.typed.config.mjs',
+    'eslint.complexity.config.mjs',
+    '.dependency-cruiser.cjs',
+    'quality.config.mjs',
+  ],
+  generated: [],
+  comments: {
+    full: ['scripts/pack-smoke.mjs', 'scripts/quality-negative.mjs'],
+  },
+  knipConfig: 'knip.json',
+  duplicatePaths: ['src', 'scripts'],
+  duplicateIgnore: ['**/__tests__/**', '**/*.test.*', '**/*.spec.*'],
+  baselineDir: 'quality/baselines',
+  duplicateMaxPercentage: 5,
+  duplicateFullPaths: ['src', 'scripts'],
+  duplicateFullIgnore: [],
+};

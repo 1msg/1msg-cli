@@ -1,5 +1,6 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { HELP_TEXT } from '../help-text';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../..');
@@ -27,7 +28,7 @@ function unlabeledFences(slice: string): string[] {
   const re = /```\n([\s\S]*?)\n```/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(slice))) {
-    fences.push(normalizeHelp(m[1]));
+    if (m[1] !== undefined) fences.push(normalizeHelp(m[1]));
   }
   return fences;
 }
@@ -38,6 +39,7 @@ function extraFenceKey(text: string): string | undefined {
   return m?.[1];
 }
 
+/** Extract each RFC help block and its aliases; reject headings without a help fence instead of silently dropping coverage. */
 function rfcHelpPages(md: string): Map<string, string> {
   const headingRe = /^#{2,4} .*(`1msg(?: [^`]+)? --help`)/gm;
   const headings: { index: number; keys: string[] }[] = [];
@@ -48,14 +50,18 @@ function rfcHelpPages(md: string): Map<string, string> {
   }
   const pages = new Map<string, string>();
   for (let i = 0; i < headings.length; i++) {
-    const end = i + 1 < headings.length ? headings[i + 1].index : md.length;
-    const fences = unlabeledFences(md.slice(headings[i].index, end));
-    expect({ keys: headings[i].keys, fenceCount: fences.length > 0 }).toEqual({
-      keys: headings[i].keys,
+    const heading = headings[i];
+    if (heading === undefined) throw new Error('Missing RFC heading');
+    const end = headings[i + 1]?.index ?? md.length;
+    const fences = unlabeledFences(md.slice(heading.index, end));
+    expect({ keys: heading.keys, fenceCount: fences.length > 0 }).toEqual({
+      keys: heading.keys,
       fenceCount: true,
     });
-    for (const key of headings[i].keys) {
-      pages.set(key, fences[0]);
+    const firstFence = fences[0];
+    if (firstFence === undefined) throw new Error('RFC heading has no help block');
+    for (const key of heading.keys) {
+      pages.set(key, firstFence);
     }
     for (const fence of fences.slice(1)) {
       const key = extraFenceKey(fence);

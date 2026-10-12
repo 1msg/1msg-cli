@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "adoptionBase": "e5c0a856387326a9786ee9669441fb787de36926",
+  "entries": [
+    {
+      "key": "typescript|296f1f362436f27192adda6d8dcb2e81f73eab7f8c979766f196f6169b88af10|src/send.ts",
+      "value": 1,
+      "paths": ["src/send.ts"],
+      "tokens": 59,
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical findings replayed at the adoption base; each item is tracked independently and cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/send.ts": "9dc6f0a974e9d928255cbb82f929a700130fac7aff815d5915ef731622bb93a8"
+      }
+    },
+    {
+      "key": "typescript|481a91f0567f2761220752e2ca37d954ab23af4c0d83d427319cff8c7bcb667c|src/rest.ts",
+      "value": 1,
+      "paths": ["src/rest.ts"],
+      "tokens": 56,
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical findings replayed at the adoption base; each item is tracked independently and cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/rest.ts": "3ed26d4e118210cf7d6e7bafb590c9a8f7b11c9dd0376a9bfd0eeff2b78b8f52"
+      }
+    },
+    {
+      "key": "typescript|b0ade4b300c5e369d4264c263e8700d48683131beed1fe560e97169d00c59afb|src/rest.ts",
+      "value": 1,
+      "paths": ["src/rest.ts"],
+      "tokens": 65,
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical findings replayed at the adoption base; each item is tracked independently and cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/rest.ts": "3ed26d4e118210cf7d6e7bafb590c9a8f7b11c9dd0376a9bfd0eeff2b78b8f52"
+      }
+    }
+  ]
+}

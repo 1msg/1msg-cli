@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "adoptionBase": "e5c0a856387326a9786ee9669441fb787de36926",
+  "entries": [
+    {
+      "key": "src/errors.ts|complexity|normalizeThrown|0",
+      "value": 23,
+      "path": "src/errors.ts",
+      "rule": "complexity",
+      "scope": "normalizeThrown",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/errors.ts": "0b1bfdd43cf890f83f948cc29243e04a57098481abc94c8fbacad379fa56338e"
+      }
+    },
+    {
+      "key": "src/errors.ts|sonarjs/cognitive-complexity|normalizeThrown|0",
+      "value": 18,
+      "path": "src/errors.ts",
+      "rule": "sonarjs/cognitive-complexity",
+      "scope": "normalizeThrown",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/errors.ts": "0b1bfdd43cf890f83f948cc29243e04a57098481abc94c8fbacad379fa56338e"
+      }
+    },
+    {
+      "key": "src/local.ts|sonarjs/cognitive-complexity|promptChannel|0",
+      "value": 18,
+      "path": "src/local.ts",
+      "rule": "sonarjs/cognitive-complexity",
+      "scope": "promptChannel",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/local.ts": "4daabceb4d1ba74ca9e60e3674cf0458a360cf4385399d6c59a45a5e0973d613"
+      }
+    },
+    {
+      "key": "src/program.ts|max-lines-per-function|createProgram|0",
+      "value": 421,
+      "path": "src/program.ts",
+      "rule": "max-lines-per-function",
+      "scope": "createProgram",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/program.ts": "3d32a585101f10cd8b70613697848a8dfce8df0f643118b30b5f79d782a564c7"
+      }
+    },
+    {
+      "key": "src/program.ts|max-lines|<file>|0",
+      "value": 506,
+      "path": "src/program.ts",
+      "rule": "max-lines",
+      "scope": "<file>",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/program.ts": "3d32a585101f10cd8b70613697848a8dfce8df0f643118b30b5f79d782a564c7"
+      }
+    },
+    {
+      "key": "src/rest.ts|max-lines|<file>|0",
+      "value": 648,
+      "path": "src/rest.ts",
+      "rule": "max-lines",
+      "scope": "<file>",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/rest.ts": "3ed26d4e118210cf7d6e7bafb590c9a8f7b11c9dd0376a9bfd0eeff2b78b8f52"
+      }
+    },
+    {
+      "key": "src/send.ts|complexity|handleMessageContact|0",
+      "value": 21,
+      "path": "src/send.ts",
+      "rule": "complexity",
+      "scope": "handleMessageContact",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/send.ts": "9dc6f0a974e9d928255cbb82f929a700130fac7aff815d5915ef731622bb93a8"
+      }
+    },
+    {
+      "key": "src/send.ts|max-lines|<file>|0",
+      "value": 713,
+      "path": "src/send.ts",
+      "rule": "max-lines",
+      "scope": "<file>",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/send.ts": "9dc6f0a974e9d928255cbb82f929a700130fac7aff815d5915ef731622bb93a8"
+      }
+    },
+    {
+      "key": "src/send.ts|max-params|<callback>|0",
+      "value": 7,
+      "path": "src/send.ts",
+      "rule": "max-params",
+      "scope": "<callback>",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/send.ts": "9dc6f0a974e9d928255cbb82f929a700130fac7aff815d5915ef731622bb93a8"
+      }
+    },
+    {
+      "key": "src/send.ts|sonarjs/cognitive-complexity|handleMessageContact|0",
+      "value": 21,
+      "path": "src/send.ts",
+      "rule": "sonarjs/cognitive-complexity",
+      "scope": "handleMessageContact",
+      "owner": "1MSG SDK/tooling maintainers",
+      "expires": "2026-12-11",
+      "reason": "Historical maintainability findings replayed at the adoption base; individual measurements cannot increase.",
+      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
+      "evidence": {
+        "src/send.ts": "9dc6f0a974e9d928255cbb82f929a700130fac7aff815d5915ef731622bb93a8"
+      }
+    }
+  ]
+}

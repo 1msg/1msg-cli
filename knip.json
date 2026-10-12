@@ -1,0 +1,11 @@
+{
+  "entry": [
+    "src/index.ts!",
+    "scripts/*.{js,mjs,cjs}",
+    "jest.config.js",
+    "eslint*.mjs",
+    "quality.config.mjs"
+  ],
+  "project": ["src/**/*.ts!", "scripts/*.{js,mjs,cjs}"],
+  "ignore": ["tools/quality/**"]
+}

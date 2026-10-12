@@ -1,14 +1,16 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { OPERATION_COMMANDS, SKIPPED_OPERATION_IDS } from '../commands';
 
 const SPEC = path.resolve(__dirname, '../../../../public/openapi.bundled.yaml');
 const IN_MONOREPO = fs.existsSync(SPEC);
 
+/** Collect unique declared operations so the CLI coverage test detects missing command bindings. */
 function operationIdsFromSpec(yaml: string): string[] {
   const ids = new Set<string>();
   for (const match of yaml.matchAll(/^\s+operationId:\s+(\S+)\s*$/gm)) {
-    ids.add(match[1]);
+    if (match[1] !== undefined) ids.add(match[1]);
   }
   return [...ids].sort();
 }
