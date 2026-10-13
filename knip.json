@@ -1,11 +1,17 @@
 {
   "entry": [
     "src/index.ts!",
-    "scripts/*.{js,mjs,cjs}",
+    "scripts/pack-smoke.mjs",
+    "scripts/quality-extensions.test.mjs",
+    "scripts/quality-hook.test.mjs",
+    "scripts/quality-negative.mjs",
     "jest.config.js",
     "eslint*.mjs",
     "quality.config.mjs"
   ],
-  "project": ["src/**/*.ts!", "scripts/*.{js,mjs,cjs}"],
+  "project": [
+    "src/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}!",
+    "scripts/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"
+  ],
   "ignore": ["tools/quality/**"]
 }
