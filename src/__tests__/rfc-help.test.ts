@@ -1,17 +1,12 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 import { HELP_TEXT } from '../help-text';
+import { readContractInput } from './contract-inputs';
 
-const REPO_ROOT = path.resolve(__dirname, '../../../..');
-const RFC = path.join(REPO_ROOT, 'docs/CLI.md');
-const IN_MONOREPO =
-  fs.existsSync(RFC) && fs.existsSync(path.join(REPO_ROOT, 'packages/cli/package.json'));
-
+/** Normalize line endings and terminal newlines without relaxing any flag or help wording. */
 function normalizeHelp(text: string): string {
   return `${text.replace(/\r\n/g, '\n').replace(/\n+$/, '')}\n`;
 }
 
+/** Read every command alias named by one RFC heading, including root help. */
 function headingKeys(line: string): string[] {
   const keys: string[] = [];
   const re = /`1msg(?: ([^`]+))? --help`/g;
@@ -33,6 +28,7 @@ function unlabeledFences(slice: string): string[] {
   return fences;
 }
 
+/** Identify secondary command help fences that share a heading with a related command. */
 function extraFenceKey(text: string): string | undefined {
   const first = text.trim().split('\n')[0] ?? '';
   const m = first.match(/^1msg ((?:message|channel|template) \S+|\S+)/);
@@ -71,9 +67,11 @@ function rfcHelpPages(md: string): Map<string, string> {
   return pages;
 }
 
-(IN_MONOREPO ? describe : describe.skip)('help text stays aligned with RFC', () => {
+/** The standalone package uses the same frozen RFC help contract as its producer. */
+describe('help text stays aligned with RFC', () => {
+  /** Reject altered help text, lost commands and undocumented aliases in either direction. */
   it('every RFC 1msg --help page matches HELP_TEXT', () => {
-    const md = fs.readFileSync(RFC, 'utf8');
+    const md = readContractInput('CLI.md');
     const pages = rfcHelpPages(md);
     expect(pages.size).toBeGreaterThan(20);
     const assigned = new Set(pages.values());

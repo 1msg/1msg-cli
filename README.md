@@ -651,7 +651,7 @@ OpenAPI YAML (1msg-api monorepo)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-Coverage is asserted in the `1msg-api` monorepo: 61 mapped public `operationId`s + explicit `deleteMediaLegacy` skip = 62. `--help` text is snapshot-tested against the RFC.
+Coverage is asserted in this standalone package using the public contract pinned in `quality/contracts/provenance.json`: 61 mapped public `operationId`s + explicit `deleteMediaLegacy` exclusion = 62. Every `--help` page is checked against the RFC from the same producer commit. Missing or changed input files fail the tests.
 
 ---
 

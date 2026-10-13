@@ -9,3 +9,7 @@ Install with the frozen lockfile, then `npm --prefix tools/quality ci`. Run `npm
 Historical debt is recorded per finding in `quality/baselines`, with adoption SHA, evidence, owner, issue and expiry. Initial allowances are replayed against the default branch; new findings and increases are forbidden. Remove entries when fixed. Generated paths have producer provenance; authored tooling is always checked.
 
 The `quality-required` job fails on failed/skipped/cancelled prerequisites. Configure branch protection to require it; YAML alone does not change server protection. Tests use isolated/local inputs; never point them at production services.
+
+Standalone contract tests use the byte-pinned public API and CLI RFC in `quality/contracts`. Their provenance records the producer commit and checksums. Missing or edited inputs fail; they never skip based on checkout layout. Update the input snapshots deliberately from a reviewed producer commit, retaining full operation coverage and help assertions. These checks compare the pinned contract, not the latest remote API.
+
+Knip classifies `src/__tests__` as a test graph input and retains it in the full graph. The obsolete production allowance for the test-only `helpers.ts` was removed; runtime modules used only by a test remain production findings, as the real Knip fixture verifies.

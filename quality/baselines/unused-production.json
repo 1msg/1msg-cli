@@ -3,20 +3,6 @@
   "adoptionBase": "e5c0a856387326a9786ee9669441fb787de36926",
   "entries": [
     {
-      "key": "src/__tests__/helpers.ts|files|src/__tests__/helpers.ts",
-      "value": 1,
-      "path": "src/__tests__/helpers.ts",
-      "rule": "files",
-      "symbol": "src/__tests__/helpers.ts",
-      "owner": "1MSG SDK/tooling maintainers",
-      "expires": "2026-12-11",
-      "reason": "Historical findings replayed at the adoption base; each item is tracked independently and cannot increase.",
-      "issue": "https://plane.1msg.io/1msg/browse/1MSG-156/",
-      "evidence": {
-        "src/__tests__/helpers.ts": "9df17bb352bda868530bfd5fe9d92814fc51c986e45eb3f182e619098922cf6e"
-      }
-    },
-    {
       "key": "src/commands.ts|exports|OPERATION_COMMANDS",
       "value": 1,
       "path": "src/commands.ts",

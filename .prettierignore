@@ -3,3 +3,7 @@ dist
 tools/quality
 quality/reports
 
+
+# Byte-pinned producer inputs; integrity is checked by the contract tests.
+quality/contracts/openapi.yaml
+quality/contracts/CLI.md
