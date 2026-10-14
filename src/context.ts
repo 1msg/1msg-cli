@@ -1,9 +1,8 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import readline from 'node:readline/promises';
-import { Writable } from 'stream';
 import { createClient, type Client, type ClientConfigOptions } from '@1msg/sdk';
+import fs from 'node:fs';
+import os from 'node:os';
+import readline from 'node:readline/promises';
+import { Writable } from 'node:stream';
 
 export interface CliFs {
   readFileSync: typeof fs.readFileSync;
@@ -32,13 +31,22 @@ export interface CliContext {
   readStdin: () => Promise<string>;
 }
 
+/** Buffer text or binary stdin until end; reject unsupported object-mode chunks and propagate stream failures. */
 function collectStream(stream: NodeJS.ReadableStream): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    stream.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
-    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    stream.on('error', reject);
-  });
+  /** Resolve only after the stream ends and reject stream errors before producing a partial input value. */
+  return new Promise(
+    /** Collect validated chunks until end; reject input stream errors. */ (resolve, reject) => {
+      const chunks: Buffer[] = [];
+      /** Accept only byte buffers and strings from the input stream; unsupported object-mode values are errors. */
+      stream.on('data', (chunk: unknown) => {
+        if (Buffer.isBuffer(chunk)) chunks.push(Buffer.from(chunk));
+        else if (typeof chunk === 'string') chunks.push(Buffer.from(chunk));
+        else reject(new TypeError('Expected a text or Buffer stream chunk'));
+      });
+      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      stream.on('error', reject);
+    },
+  );
 }
 
 function pauseStdin(stdin: NodeJS.ReadableStream): void {
@@ -61,7 +69,11 @@ export function releaseStdio(stdin: NodeJS.ReadableStream = process.stdin): void
   pauseStdin(stdin);
 }
 
-async function question(stdin: NodeJS.ReadableStream, stdout: Writable, query: string): Promise<string> {
+async function question(
+  stdin: NodeJS.ReadableStream,
+  stdout: Writable,
+  query: string,
+): Promise<string> {
   const rl = readline.createInterface({
     input: stdin,
     output: stdout,

@@ -1,9 +1,10 @@
 import { stringify } from 'yaml';
-import { runCli } from '../run';
+
+import { releaseStdio } from '../context';
 import { configFilePath } from '../paths';
+import { runCli } from '../run';
 import { CLI_VERSION } from '../version';
 import { createRecordingClient, makeCtx } from './helpers';
-import { releaseStdio } from '../context';
 
 function withChannel(ctxFilesWrite: (ctx: ReturnType<typeof makeCtx>['ctx']) => void) {
   const bundle = createRecordingClient();

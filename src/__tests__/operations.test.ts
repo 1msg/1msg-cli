@@ -1,5 +1,6 @@
-import path from 'path';
+import path from 'node:path';
 import { stringify } from 'yaml';
+
 import { OPERATION_COMMANDS } from '../commands';
 import { configFilePath } from '../paths';
 import { runCli } from '../run';

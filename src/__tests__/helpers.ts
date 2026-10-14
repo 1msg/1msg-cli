@@ -1,13 +1,19 @@
-import { Writable } from 'stream';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
 import type { Client, ClientConfigOptions } from '@1msg/sdk';
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { Writable } from 'node:stream';
+
 import { createDefaultContext, type CliContext } from '../context';
 
 export class MemoryWriter extends Writable {
   chunks: string[] = [];
-  override _write(chunk: Buffer | string, _enc: BufferEncoding, cb: (err?: Error | null) => void): void {
+  override _write(
+    chunk: Buffer | string,
+    _enc: BufferEncoding,
+    cb: (err?: Error | null) => void,
+  ): void {
     this.chunks.push(String(chunk));
     cb();
   }
@@ -16,7 +22,11 @@ export class MemoryWriter extends Writable {
   }
 }
 
-export function createRecordingClient(): { client: Client; calls: Array<{ method: string; args: unknown[] }> } {
+/** Create an in-memory SDK double that records request arguments and returns configured responses without network access. */
+export function createRecordingClient(): {
+  client: Client;
+  calls: Array<{ method: string; args: unknown[] }>;
+} {
   const calls: Array<{ method: string; args: unknown[] }> = [];
   const fn = (label: string) =>
     jest.fn().mockImplementation(async (...args: unknown[]) => {
@@ -25,10 +35,32 @@ export function createRecordingClient(): { client: Client; calls: Array<{ method
         return { sent: true, id: 'wamid.mock', chatId: '12020721369@c.us' };
       }
       if (label === 'templates.listTemplates') {
-        return { total: 1, templates: [{ name: 'hello_world', status: 'APPROVED', language: 'en', category: 'UTILITY', id: '1' }] };
+        return {
+          total: 1,
+          templates: [
+            {
+              name: 'hello_world',
+              status: 'APPROVED',
+              language: 'en',
+              category: 'UTILITY',
+              id: '1',
+            },
+          ],
+        };
       }
       if (label === 'messaging.listMessages') {
-        return { messages: [{ time: 1, chatId: '12020721369@c.us', from: 'me', type: 'text', id: 'm1', body: 'hello' }] };
+        return {
+          messages: [
+            {
+              time: 1,
+              chatId: '12020721369@c.us',
+              from: 'me',
+              type: 'text',
+              id: 'm1',
+              body: 'hello',
+            },
+          ],
+        };
       }
       if (label === 'channel.getStatus') {
         return { status: 'connected', accountStatus: 'authenticated', mm_lite_available: false };
@@ -85,15 +117,22 @@ export function createRecordingClient(): { client: Client; calls: Array<{ method
   return { client, calls };
 }
 
+/** Construct isolated CLI streams, filesystem and client factories so command tests cannot affect user configuration. */
 export function makeCtx(opts?: {
   env?: NodeJS.ProcessEnv;
   homedir?: string;
   createClient?: (options: ClientConfigOptions) => Client;
   files?: Record<string, string>;
-}): { ctx: CliContext; stdout: MemoryWriter; stderr: MemoryWriter; files: Map<string, Buffer | string> } {
+}): {
+  ctx: CliContext;
+  stdout: MemoryWriter;
+  stderr: MemoryWriter;
+  files: Map<string, Buffer | string>;
+} {
   const stdout = new MemoryWriter();
   const stderr = new MemoryWriter();
-  const homedir = opts?.homedir ?? path.join(os.tmpdir(), `1msg-cli-test-${Math.random().toString(16).slice(2)}`);
+  const homedir =
+    opts?.homedir ?? path.join(os.tmpdir(), `1msg-cli-test-${Math.random().toString(16).slice(2)}`);
   const files = new Map<string, Buffer | string>();
   if (opts?.files) {
     for (const [k, v] of Object.entries(opts.files)) files.set(k, v);

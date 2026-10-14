@@ -26,7 +26,9 @@ export function requireDest(
   }
   if (!opts.to && !opts.chatId) {
     usage(
-      allowChatId ? 'missing destination: pass --to or --chat-id' : 'missing destination: pass --to',
+      allowChatId
+        ? 'missing destination: pass --to or --chat-id'
+        : 'missing destination: pass --to',
       help,
     );
   }

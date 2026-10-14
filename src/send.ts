@@ -1,5 +1,9 @@
 import type { Command } from 'commander';
+
 import type { CliContext } from './context';
+
+import { writeCompletionCache } from './completion';
+import { resolveChannel } from './config';
 import { destFields, destStringPhone, parsePhone, requireDest } from './dest';
 import { usage } from './errors';
 import { ok, printApiResult, printSent, withClient } from './execute';
@@ -15,8 +19,6 @@ import {
 } from './io';
 import { globalsFrom } from './local';
 import { asArray, asRecord, pickString, printTable, truncate } from './output';
-import { writeCompletionCache } from './completion';
-import { resolveChannel } from './config';
 
 type SendOpts = {
   to?: string;
@@ -31,22 +33,30 @@ type SendOpts = {
   voice?: boolean;
 };
 
+/** Validate one message source and its recipient, perform one SDK send operation, then format the response for the CLI. */
 export async function handleSend(ctx: CliContext, cmd: Command, opts: SendOpts): Promise<number> {
   const dest = requireDest(opts, '1msg send --help');
-  const bodies = [opts.text !== undefined, Boolean(opts.file), Boolean(opts.mediaId)].filter(Boolean);
-  if (bodies.length !== 1) usage('pass exactly one of --text, --file, or --media-id', '1msg send --help');
+  const bodies = [opts.text !== undefined, Boolean(opts.file), Boolean(opts.mediaId)].filter(
+    Boolean,
+  );
+  if (bodies.length !== 1)
+    usage('pass exactly one of --text, --file, or --media-id', '1msg send --help');
   const flags = globalsFrom(cmd);
   const toLabel = opts.chatId || (opts.to ? `${opts.to}@c.us` : undefined);
 
   if (opts.text !== undefined) {
     if (opts.text.length > 4096) usage('--text max 4096 characters', '1msg send --help');
-    const body = await withClient(ctx, flags, (client) =>
-      client.sendMessage({
-        body: opts.text as string,
-        quotedMsgId: dest.quotedMsgId,
-        chatId: dest.chatId,
-        phone: dest.phone,
-      }),
+    /** Send only present optional destination fields so omitted values keep the SDK request contract. */
+    const body = await withClient(
+      ctx,
+      flags,
+      /** Send validated text and only the destination options explicitly supplied. */ (client) =>
+        client.sendMessage({
+          body: opts.text as string,
+          ...(dest.quotedMsgId === undefined ? {} : { quotedMsgId: dest.quotedMsgId }),
+          ...(dest.chatId === undefined ? {} : { chatId: dest.chatId }),
+          ...(dest.phone === undefined ? {} : { phone: dest.phone }),
+        }),
     );
     printSent(ctx, flags, body, toLabel);
     return ok();
@@ -174,18 +184,29 @@ export async function handleMessageReact(
   return ok();
 }
 
+/** Validate location coordinates and destination before forwarding a typed SDK request and rendering the response. */
 export async function handleMessageLocation(
   ctx: CliContext,
   cmd: Command,
-  opts: { to?: string; chatId?: string; quote?: string; lat?: string; lng?: string; name?: string; address?: string },
+  opts: {
+    to?: string;
+    chatId?: string;
+    quote?: string;
+    lat?: string;
+    lng?: string;
+    name?: string;
+    address?: string;
+  },
 ): Promise<number> {
   if (opts.lat === undefined || opts.lng === undefined) {
     usage('--lat and --lng are required', '1msg message location --help');
   }
   const lat = Number(opts.lat);
   const lng = Number(opts.lng);
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90) usage('--lat must be -90..90', '1msg message location --help');
-  if (!Number.isFinite(lng) || lng < -180 || lng > 180) usage('--lng must be -180..180', '1msg message location --help');
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90)
+    usage('--lat must be -90..90', '1msg message location --help');
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180)
+    usage('--lng must be -180..180', '1msg message location --help');
   const dest = requireDest(opts, '1msg message location --help');
   const flags = globalsFrom(cmd);
   const body = await withClient(ctx, flags, (client) =>
@@ -243,7 +264,8 @@ export async function handleMessageContact(
   const dest = destFields(opts);
   if (!opts.fromFile) {
     requireDest(opts, '1msg message contact --help');
-    if (!opts.name || !opts.phone) usage('--name and --phone are required', '1msg message contact --help');
+    if (!opts.name || !opts.phone)
+      usage('--name and --phone are required', '1msg message contact --help');
   }
   const payload: Record<string, unknown> = { ...file };
   if (!payload.contacts && !payload.contact) {
@@ -400,7 +422,10 @@ export async function handleMessageProduct(
 ): Promise<number> {
   const hasPair = Boolean(opts.catalogId && opts.productId);
   if (Boolean(opts.fromFile) === hasPair || (!opts.fromFile && !hasPair)) {
-    usage('exactly one of: --from-file, or --catalog-id plus --product-id', '1msg message product --help');
+    usage(
+      'exactly one of: --from-file, or --catalog-id plus --product-id',
+      '1msg message product --help',
+    );
   }
   requireDest(opts, '1msg message product --help');
   const dest = destStringPhone(opts);
@@ -456,10 +481,18 @@ export async function handleMessageCta(
   return ok();
 }
 
+/** Build the optional structured address from command flags, then send it through the configured SDK client. */
 export async function handleMessageAddress(
   ctx: CliContext,
   cmd: Command,
-  opts: { to?: string; chatId?: string; quote?: string; text?: string; country?: string; fromFile?: string },
+  opts: {
+    to?: string;
+    chatId?: string;
+    quote?: string;
+    text?: string;
+    country?: string;
+    fromFile?: string;
+  },
 ): Promise<number> {
   if (!opts.text) usage('--text is required', '1msg message address --help');
   const dest = requireDest(opts, '1msg message address --help');
@@ -517,7 +550,8 @@ export async function handleMessagePayment(
   cmd: Command,
   opts: { to?: string; region?: string; text?: string; fromFile?: string; chatId?: string },
 ): Promise<number> {
-  if (opts.chatId) usage('this command accepts --to only (no --chat-id)', '1msg message payment --help');
+  if (opts.chatId)
+    usage('this command accepts --to only (no --chat-id)', '1msg message payment --help');
   if (!opts.to) usage('missing destination: pass --to', '1msg message payment --help');
   if (!opts.region) usage('--region is required (IN|SG|BR)', '1msg message payment --help');
   const file = await readJsonFile(ctx, opts.fromFile);
@@ -531,35 +565,6 @@ export async function handleMessagePayment(
   const body = await withClient(ctx, flags, (client) =>
     client.messaging.sendPaymentRequest(client.config.token, payload as never),
   );
-  printSent(ctx, flags, body);
-  return ok();
-}
-
-export async function handleMessageSticker(
-  ctx: CliContext,
-  cmd: Command,
-  opts: { to?: string; chatId?: string; quote?: string; link?: string; mediaId?: string; file?: string },
-): Promise<number> {
-  const sources = [Boolean(opts.link), Boolean(opts.mediaId), Boolean(opts.file)].filter(Boolean);
-  if (sources.length !== 1) usage('exactly one source: --link, --media-id, or --file', '1msg message sticker --help');
-  requireDest(opts, '1msg message sticker --help');
-  const dest = destStringPhone(opts);
-  const flags = globalsFrom(cmd);
-  const payload: Record<string, unknown> = { ...dest };
-  if (opts.link) payload.link = opts.link;
-  if (opts.mediaId) payload.mediaId = opts.mediaId;
-  const body = await withClient(ctx, flags, async (client) => {
-    if (opts.file) {
-      const buf = readBinaryFile(ctx, opts.file);
-      const uploaded = asRecord(
-        await client.messaging.createUploadMedia(client.config.token, {
-          body: fileToDataUri(buf, basenameOf(opts.file)),
-        } as never),
-      );
-      payload.mediaId = uploaded.mediaId;
-    }
-    return client.messaging.sendSticker(client.config.token, payload as never);
-  });
   printSent(ctx, flags, body);
   return ok();
 }
@@ -630,9 +635,7 @@ export async function handleTemplateList(
   );
   const rec = asRecord(body);
   const templates = asArray(rec.templates);
-  const names = templates
-    .map((item) => pickString(asRecord(item), ['name']))
-    .filter(Boolean);
+  const names = templates.map((item) => pickString(asRecord(item), ['name'])).filter(Boolean);
   try {
     const resolved = resolveChannel(ctx, flags);
     writeCompletionCache(ctx, resolved.name || 'env', names);
@@ -705,7 +708,8 @@ export async function handleTemplateAdd(
 ): Promise<number> {
   if (!opts.fromFile) usage('--from-file is required', '1msg template add --help');
   const payload = await readJsonFile(ctx, opts.fromFile);
-  if (!Array.isArray(payload.components)) usage('components[] is absent', '1msg template add --help');
+  if (!Array.isArray(payload.components))
+    usage('components[] is absent', '1msg template add --help');
   if (opts.name) payload.name = opts.name;
   if (opts.category) payload.category = opts.category;
   if (opts.language) payload.language = opts.language;
