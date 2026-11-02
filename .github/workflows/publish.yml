@@ -1,14 +1,7 @@
 name: Publish npm
 
-# Publishes @1msg/cli to the public npm registry.
-#
-# Required secret: NPM_TOKEN (npm publish token for @1msg/*)
-#
-# Typical flow (token lives on 1msg-api until copied here):
-#   1msg-api Actions → Publish @1msg/cli → dry_run=false
-#   or, once NPM_TOKEN is set on this repo:
-#   Actions → Publish npm → Run workflow (dry_run=true, then false)
-
+# npm trusted publisher: 1msg/1msg-cli / publish.yml, direct publish only.
+# Rehearsals build and validate the same tarball without publishing it.
 on:
   workflow_dispatch:
     inputs:
@@ -19,43 +12,113 @@ on:
   push:
     tags:
       - 'v*'
-
 permissions:
   contents: read
-
+concurrency:
+  group: publish-npm-1msg-cli
+  cancel-in-progress: false
 jobs:
   publish:
     name: Publish @1msg/cli
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require merged source and matching package metadata
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor HEAD origin/main
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          assert.equal(pkg.name, '@1msg/cli');
+          assert.match(pkg.version, /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/);
+          assert.equal(lock.version, pkg.version);
+          assert.equal(lock.packages[''].version, pkg.version);
+          assert.equal(pkg.repository.url, 'git+https://github.com/1msg/1msg-cli.git');
+          assert.ok(!pkg.publishConfig?.registry || pkg.publishConfig.registry.replace(/\/$/, '') === 'https://registry.npmjs.org');
+          if (process.env.GITHUB_REF_TYPE === 'tag') assert.equal(process.env.GITHUB_REF_NAME, `v${pkg.version}`);
+          else assert.equal(process.env.GITHUB_REF, 'refs/heads/main');
+          NODE
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24.19.0'
           registry-url: https://registry.npmjs.org
           cache: npm
-
+      - name: Use the pinned npm version with OIDC support
+        run: npm install --global npm@11.17.0 --ignore-scripts --registry=https://registry.npmjs.org/
       - name: Install
         run: npm ci
-
       - name: Build
         run: npm run build
-
       - name: Test
         run: npm test
-
       - name: Smoke --help / version
         run: |
           node dist/index.js --help
           node dist/index.js version
-
-      - name: npm pack (dry-run always)
-        run: npm pack --dry-run
-
-      - name: npm publish
+      - name: Pack and inspect the built artifact
+        id: artifact
+        run: |
+          set -euo pipefail
+          git diff --exit-code HEAD
+          mkdir -p "$RUNNER_TEMP/npm-release"
+          npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP/npm-release" > "$RUNNER_TEMP/npm-release/pack.json"
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { createHash } = require('node:crypto');
+          const manifest = require('./package.json');
+          const directory = path.join(process.env.RUNNER_TEMP, 'npm-release');
+          const records = JSON.parse(fs.readFileSync(path.join(directory, 'pack.json')));
+          assert.equal(records.length, 1);
+          const pkg = records[0];
+          assert.equal(pkg.name, '@1msg/cli');
+          assert.equal(pkg.version, manifest.version);
+          assert.equal(pkg.filename, `1msg-cli-${pkg.version}.tgz`);
+          assert.ok(pkg.files.some(file => file.path === 'dist/index.js'));
+          assert.ok(pkg.files.every(file => /^(dist\/|README\.md$|ARCHITECTURE\.md$|LICENSE$|package\.json$)/.test(file.path)));
+          const filename = path.join(directory, pkg.filename);
+          const integrity = `sha512-${createHash('sha512').update(fs.readFileSync(filename)).digest('base64')}`;
+          assert.equal(pkg.integrity, integrity);
+          fs.writeFileSync(path.join(directory, 'provenance.json'), JSON.stringify({ source: process.env.GITHUB_SHA, name: pkg.name, version: pkg.version, integrity }, null, 2));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `filename=${filename}\nversion=${pkg.version}\nintegrity=${integrity}\n`);
+          NODE
+          npm publish "$RUNNER_TEMP/npm-release/1msg-cli-$(node -p 'require("./package.json").version').tgz" --ignore-scripts --access public --registry=https://registry.npmjs.org/ --dry-run
+      - name: Preserve the reviewed release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1msg-cli-${{ steps.artifact.outputs.version }}-${{ github.sha }}
+          path: ${{ runner.temp }}/npm-release/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish the exact tarball through npm trusted publishing
         if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
-        run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_FILE: ${{ steps.artifact.outputs.filename }}
+        run: npm publish "$RELEASE_FILE" --ignore-scripts --access public --registry=https://registry.npmjs.org/ --tag latest
+      - name: Verify the published artifact after registry propagation
+        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        env:
+          RELEASE_VERSION: ${{ steps.artifact.outputs.version }}
+          EXPECTED_INTEGRITY: ${{ steps.artifact.outputs.integrity }}
+        run: |
+          set -euo pipefail
+          for ((attempt=1; attempt<=60; attempt++)); do
+            actual="$(npm view "@1msg/cli@${RELEASE_VERSION}" dist.integrity --prefer-online --registry=https://registry.npmjs.org/ 2>/dev/null || true)"
+            if [[ "$actual" == "$EXPECTED_INTEGRITY" ]]; then
+              echo "Verified published @1msg/cli@${RELEASE_VERSION} from ${GITHUB_SHA}"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'npm accepted the publish, but matching registry integrity is still pending; do not republish blindly.' >&2
+          exit 1
