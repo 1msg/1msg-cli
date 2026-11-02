@@ -1,6 +1,8 @@
-import path from 'path';
+import path from 'node:path';
 import { parse, stringify } from 'yaml';
+
 import type { CliContext } from './context';
+
 import { NotConfiguredError, UsageError } from './errors';
 import { configFilePath } from './paths';
 
@@ -16,13 +18,14 @@ export interface FileConfig {
   channels: Record<string, ChannelBlock>;
 }
 
+/** Commander produces present keys with undefined values when flags are unset. */
 export interface GlobalFlags {
-  channel?: string;
-  instanceId?: string;
-  baseUrl?: string;
-  token?: string;
-  json?: boolean;
-  color?: boolean;
+  channel?: string | undefined;
+  instanceId?: string | undefined;
+  baseUrl?: string | undefined;
+  token?: string | undefined;
+  json?: boolean | undefined;
+  color?: boolean | undefined;
 }
 
 export interface ResolvedChannel {
@@ -40,14 +43,13 @@ const PUBLIC_API_HOST_ALIASES: Record<string, string> = {
   'api.sandbox.1msg.io': 'sandbox.1msg.io',
 };
 
+/** Normalize the configured API endpoint while preserving its path and rejecting an empty value. */
 export function normalizeBaseUrl(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) {
     throw new UsageError('base URL must not be empty');
   }
-  const withScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
+  const withScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
   let parsed: URL;
   try {
     parsed = new URL(withScheme);
@@ -95,6 +97,7 @@ export function envToken(ctx: CliContext): string | undefined {
   return readEnv(ctx, 'ONE_MSG_TOKEN', ['CHAT_API_TOKEN', 'CHAT_API_KEY', 'TOKEN']);
 }
 
+/** Read the user config file without network access; absent/empty configuration returns null and missing optional keys stay absent. */
 export function loadConfig(ctx: CliContext): FileConfig | null {
   const filePath = configFilePath(ctx);
   if (!ctx.fs.existsSync(filePath)) return null;
@@ -102,11 +105,10 @@ export function loadConfig(ctx: CliContext): FileConfig | null {
   if (!String(raw).trim()) return null;
   const parsed = parse(String(raw)) as Partial<FileConfig> | null;
   if (!parsed || typeof parsed !== 'object') return null;
-  const channels =
-    parsed.channels && typeof parsed.channels === 'object' ? parsed.channels : {};
+  const channels = parsed.channels && typeof parsed.channels === 'object' ? parsed.channels : {};
   return {
     version: 1,
-    default_channel: parsed.default_channel,
+    ...(parsed.default_channel === undefined ? {} : { default_channel: parsed.default_channel }),
     channels,
   };
 }
@@ -138,9 +140,7 @@ export function resolveChannel(ctx: CliContext, flags: GlobalFlags): ResolvedCha
     flags.channel ||
     envChannel(ctx) ||
     file?.default_channel ||
-    (file && Object.keys(file.channels).length === 1
-      ? Object.keys(file.channels)[0]
-      : undefined);
+    (file && Object.keys(file.channels).length === 1 ? Object.keys(file.channels)[0] : undefined);
 
   if (channelName) {
     const block = file?.channels[channelName];
@@ -190,12 +190,13 @@ function fillChannel(
   };
 }
 
+/** Resolve a configured name or unique instance ID; reject absent and ambiguous matches before changing configuration. */
 export function lookupChannelName(config: FileConfig, nameOrId: string): string {
   if (config.channels[nameOrId]) return nameOrId;
   const matches = Object.entries(config.channels)
     .filter(([, block]) => block.instance_id === nameOrId)
     .map(([name]) => name);
-  if (matches.length === 1) return matches[0];
+  if (matches.length === 1 && matches[0] !== undefined) return matches[0];
   if (matches.length === 0) {
     throw new UsageError(`channel "${nameOrId}" not in config`, '1msg channel list');
   }

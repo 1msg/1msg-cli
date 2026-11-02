@@ -1,5 +1,7 @@
-import path from 'path';
+import path from 'node:path';
+
 import type { CliContext } from './context';
+
 import { usage } from './errors';
 import { resolveUserPath } from './paths';
 

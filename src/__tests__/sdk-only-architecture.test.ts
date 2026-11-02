@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const CLI_SRC = path.resolve(__dirname, '..');
 
@@ -23,10 +23,13 @@ function walk(dir: string): string[] {
   return out;
 }
 
+/** Protect the package boundary against introducing a second HTTP transport alongside the shared SDK. */
 describe('CLI SDK-only architecture', () => {
+  /** Inspect the committed dependency manifest rather than relying on locally installed transitive modules. */
   it('depends on @1msg/sdk and not on HTTP clients', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pkg = require('../../package.json') as {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
+    ) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };

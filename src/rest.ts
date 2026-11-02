@@ -1,5 +1,7 @@
 import type { Command } from 'commander';
+
 import type { CliContext } from './context';
+
 import { parsePhone } from './dest';
 import { CliExit, EXIT_API_4XX, usage } from './errors';
 import { ok, outputOpts, printApiResult, withClient } from './execute';
@@ -16,7 +18,6 @@ import {
   asArray,
   asRecord,
   meErrorMessage,
-  meProfileRows,
   pickString,
   printError,
   printKv,
@@ -37,37 +38,6 @@ function dualBool(value: unknown, negated?: unknown): boolean | undefined {
   if (value === true) return true;
   if (value === false) return false;
   return undefined;
-}
-
-export async function handleChannelInfo(ctx: CliContext, cmd: Command): Promise<number> {
-  const flags = globalsFrom(cmd);
-  const status = await withClient(ctx, flags, (client) => client.channel.getStatus(client.config.token));
-  const me = await withClient(ctx, flags, (client) => client.profile.getMe(client.config.token));
-  const combined = { status, me };
-  printApiResult(ctx, flags, combined, () => {
-    const s = asRecord(status);
-    printKv(ctx.stdout, [
-      ['status', s.status],
-      ['accountStatus', s.accountStatus],
-      ['mm_lite_available', s.mm_lite_available],
-      ...meProfileRows(me),
-    ]);
-  });
-  return ok();
-}
-
-export async function handleStatus(ctx: CliContext, cmd: Command): Promise<number> {
-  const flags = globalsFrom(cmd);
-  const body = await withClient(ctx, flags, (client) => client.channel.getStatus(client.config.token));
-  printApiResult(ctx, flags, body, () => {
-    const rec = asRecord(body);
-    printKv(ctx.stdout, [
-      ['status', rec.status],
-      ['accountStatus', rec.accountStatus],
-      ['mm_lite_available', rec.mm_lite_available],
-    ]);
-  });
-  return ok();
 }
 
 export async function handleMe(ctx: CliContext, cmd: Command): Promise<number> {
@@ -144,7 +114,8 @@ export async function handleChannelSettingsSet(
   if (analytics !== undefined) payload.template_analytics_enabled = analytics;
   const ctaOptOut = dualBool(opts.ctaTrackingOptOut, opts.noCtaTrackingOptOut);
   if (ctaOptOut !== undefined) payload.cta_url_link_tracking_opted_out = ctaOptOut;
-  if (Object.keys(payload).length === 0) usage('pass at least one settings flag', '1msg channel --help');
+  if (Object.keys(payload).length === 0)
+    usage('pass at least one settings flag', '1msg channel --help');
   const flags = globalsFrom(cmd);
   const body = await withClient(ctx, flags, (client) =>
     settingsApi(client).createSettings(client.config.token, payload),
@@ -193,7 +164,8 @@ export async function handleAutomationSet(
       return { command_name: raw.slice(0, idx), command_description: raw.slice(idx + 1) };
     });
   }
-  if (Object.keys(payload).length === 0) usage('pass at least one automation flag', '1msg channel --help');
+  if (Object.keys(payload).length === 0)
+    usage('pass at least one automation flag', '1msg channel --help');
   const flags = globalsFrom(cmd);
   const body = await withClient(ctx, flags, (client) =>
     client.channel.setConversationalAutomation(client.config.token, payload as never),
@@ -204,7 +176,9 @@ export async function handleAutomationSet(
 
 export async function handleWebhookGet(ctx: CliContext, cmd: Command): Promise<number> {
   const flags = globalsFrom(cmd);
-  const body = await withClient(ctx, flags, (client) => client.webhooks.getWebhook(client.config.token));
+  const body = await withClient(ctx, flags, (client) =>
+    client.webhooks.getWebhook(client.config.token),
+  );
   printApiResult(ctx, flags, body);
   return ok();
 }
@@ -240,7 +214,8 @@ export async function handleMediaUpload(
   cmd: Command,
   opts: { file?: string; url?: string },
 ): Promise<number> {
-  if (Boolean(opts.file) === Boolean(opts.url)) usage('pass exactly one of --file or --url', '1msg media --help');
+  if (Boolean(opts.file) === Boolean(opts.url))
+    usage('pass exactly one of --file or --url', '1msg media --help');
   let bodyField: string;
   if (opts.url) {
     bodyField = opts.url;
@@ -292,7 +267,9 @@ export async function handleMediaDelete(
 
 export async function handleUserBlocked(ctx: CliContext, cmd: Command): Promise<number> {
   const flags = globalsFrom(cmd);
-  const body = await withClient(ctx, flags, (client) => client.users.listBlockedUsers(client.config.token));
+  const body = await withClient(ctx, flags, (client) =>
+    client.users.listBlockedUsers(client.config.token),
+  );
   printApiResult(ctx, flags, body, () => {
     const rec = asRecord(body);
     const users = asArray(rec.blockedUsers ?? rec.users ?? rec.data);
@@ -325,7 +302,9 @@ export async function handleUserBlock(
 
 export async function handleCatalogGet(ctx: CliContext, cmd: Command): Promise<number> {
   const flags = globalsFrom(cmd);
-  const body = await withClient(ctx, flags, (client) => client.catalog.getCommerce(client.config.token));
+  const body = await withClient(ctx, flags, (client) =>
+    client.catalog.getCommerce(client.config.token),
+  );
   printApiResult(ctx, flags, body, () => {
     const items = Array.isArray(body) ? body : asArray(asRecord(body).data);
     const rows = items.map((item) => {
@@ -436,7 +415,8 @@ export async function handleGroupUpdate(
   if (opts.subject) payload.subject = opts.subject;
   if (opts.description) payload.description = opts.description;
   if (opts.picture) payload.profile_picture_file = opts.picture;
-  if (!Object.keys(payload).length) usage('pass --subject, --description, or --picture', '1msg group --help');
+  if (!Object.keys(payload).length)
+    usage('pass --subject, --description, or --picture', '1msg group --help');
   const flags = globalsFrom(cmd);
   const body = await withClient(ctx, flags, (client) =>
     client.groups.createGroupsGroupId(gid, client.config.token, payload as never),
@@ -586,6 +566,7 @@ export async function handleFlowMetadata(
   return ok();
 }
 
+/** Read the requested JSON document from injected file IO, upload it through the SDK, and preserve API error handling. */
 export async function handleFlowAssets(
   ctx: CliContext,
   cmd: Command,
@@ -595,7 +576,7 @@ export async function handleFlowAssets(
   if (!id) usage('missing flow id', '1msg flow --help');
   if (!opts.jsonFile) usage('--json-file is required', '1msg flow --help');
   const raw = await readFromFile(ctx, opts.jsonFile);
-  const flowJson = JSON.parse(raw || '{}');
+  const flowJson: unknown = JSON.parse(raw || '{}');
   const flags = globalsFrom(cmd);
   const body = await withClient(ctx, flags, (client) =>
     client.flows.patchFlowsFlowIdAssets(id, client.config.token, { flowJson } as never, waba(opts)),
@@ -654,7 +635,11 @@ export async function handleCallSettingsSet(
   return ok();
 }
 
-async function readSdp(ctx: CliContext, filePath: string | undefined, help: string): Promise<string> {
+async function readSdp(
+  ctx: CliContext,
+  filePath: string | undefined,
+  help: string,
+): Promise<string> {
   if (!filePath) usage('--sdp-file is required', help);
   return (await readFromFile(ctx, filePath)) ?? '';
 }
@@ -704,4 +689,3 @@ export async function handleCallControl(
   printApiResult(ctx, flags, body);
   return ok();
 }
-

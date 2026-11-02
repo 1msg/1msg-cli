@@ -16,7 +16,7 @@ export class CliExit extends Error {
 
 export class UsageError extends Error {
   readonly exitCode = EXIT_USAGE;
-  readonly see?: string;
+  readonly see: string | undefined;
   constructor(message: string, see?: string) {
     super(message);
     this.name = 'UsageError';
@@ -65,7 +65,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function extractErrorMessage(jsonBody: unknown, rawBody: string, status: number): string {
+/** Prefer structured upstream error details, then a short raw body; avoid dumping large response payloads into CLI errors. */
+function extractErrorMessage(jsonBody: unknown, rawBody: string): string {
   if (isRecord(jsonBody) && typeof jsonBody.error === 'string' && jsonBody.error.trim()) {
     return jsonBody.error;
   }
@@ -81,6 +82,7 @@ function extractErrorMessage(jsonBody: unknown, rawBody: string, status: number)
   return `request failed`;
 }
 
+/** Translate SDK and transport failures into stable CLI error classes while retaining HTTP status and response details. */
 export async function normalizeThrown(error: unknown): Promise<Error> {
   if (
     error instanceof UsageError ||
@@ -112,7 +114,7 @@ export async function normalizeThrown(error: unknown): Promise<Error> {
     } catch {
       jsonBody = undefined;
     }
-    const message = extractErrorMessage(jsonBody, rawBody, response.status);
+    const message = extractErrorMessage(jsonBody, rawBody);
     return new ApiError(response.status, rawBody, jsonBody, message);
   }
 
@@ -136,12 +138,10 @@ export async function normalizeThrown(error: unknown): Promise<Error> {
   return err;
 }
 
+/** Return an actionable token hint only for authentication failures; other errors keep their original explanation. */
 export function hintFor(error: Error): string | undefined {
   if (error instanceof ApiError && error.status === 401) {
     return 'set ONE_MSG_TOKEN or run `1msg init`';
-  }
-  if (error instanceof UsageError) {
-    return error.see ? undefined : undefined;
   }
   return undefined;
 }

@@ -1,5 +1,7 @@
 import type { Client } from '@1msg/sdk';
+
 import type { CliContext } from './context';
+
 import { type GlobalFlags, resolveChannel } from './config';
 import {
   ApiError,
@@ -74,13 +76,23 @@ export function printSent(ctx: CliContext, flags: GlobalFlags, body: unknown, to
   });
 }
 
-export async function emitError(ctx: CliContext, flags: GlobalFlags, error: unknown): Promise<number> {
+/** Render the normalized error in the selected output format and return its stable exit code without terminating the process. */
+export async function emitError(
+  ctx: CliContext,
+  flags: GlobalFlags,
+  error: unknown,
+): Promise<number> {
   const normalized = await normalizeThrown(error);
   if (normalized instanceof CliExit) return normalized.exitCode;
 
   const opts = outputOpts(flags, ctx);
   if (normalized instanceof UsageError) {
-    printError(ctx.stderr, opts, normalized, { see: normalized.see });
+    printError(
+      ctx.stderr,
+      opts,
+      normalized,
+      normalized.see === undefined ? {} : { see: normalized.see },
+    );
     return normalized.exitCode;
   }
   if (normalized instanceof NotConfiguredError) {
@@ -89,15 +101,21 @@ export async function emitError(ctx: CliContext, flags: GlobalFlags, error: unkn
   }
   if (normalized instanceof ApiError) {
     const human = new Error(`${normalized.message} (HTTP ${normalized.status})`);
+    const hint = hintFor(normalized);
     printError(ctx.stderr, opts, opts.json ? normalized : human, {
-      hint: hintFor(normalized),
-      rawBody: opts.json ? normalized.rawBody || JSON.stringify({ error: normalized.message }) : undefined,
-      jsonBody: opts.json ? normalized.jsonBody ?? { error: normalized.message } : undefined,
+      ...(hint === undefined ? {} : { hint }),
+      ...(opts.json
+        ? {
+            rawBody: normalized.rawBody || JSON.stringify({ error: normalized.message }),
+            jsonBody: normalized.jsonBody ?? { error: normalized.message },
+          }
+        : {}),
     });
     return normalized.exitCode;
   }
   printError(ctx.stderr, opts, normalized);
-  return 'exitCode' in normalized && typeof (normalized as { exitCode: number }).exitCode === 'number'
+  return 'exitCode' in normalized &&
+    typeof (normalized as { exitCode: number }).exitCode === 'number'
     ? (normalized as { exitCode: number }).exitCode
     : 1;
 }

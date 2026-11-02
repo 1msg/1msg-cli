@@ -1,4 +1,4 @@
-import type { Writable } from 'stream';
+import type { Writable } from 'node:stream';
 
 const TOKEN_KEYS = new Set([
   'token',
@@ -58,6 +58,7 @@ function stringifyCell(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/** Render a fixed set of columns with widths computed from visible cells; an empty result is reported on stderr. */
 export function printTable(
   stdout: Writable,
   stderr: Writable,
@@ -68,14 +69,13 @@ export function printTable(
     stderr.write('No rows.\n');
     return;
   }
-  const stringRows = rows.map((row) =>
-    columns.map((col) => stringifyCell(row[col] ?? '')),
-  );
+  const stringRows = rows.map((row) => columns.map((col) => stringifyCell(row[col] ?? '')));
   const widths = columns.map((col, i) =>
-    Math.max(col.length, ...stringRows.map((row) => row[i].length)),
+    Math.max(col.length, ...stringRows.map((row) => row[i]?.length ?? 0)),
   );
+  /** Pad each cell to its computed column width and produce exactly one terminal line. */
   const line = (cells: string[]) =>
-    `${cells.map((cell, i) => cell.padEnd(widths[i])).join('  ')}\n`;
+    `${cells.map((cell, i) => cell.padEnd(widths[i] ?? cell.length)).join('  ')}\n`;
   stdout.write(line(columns));
   for (const row of stringRows) stdout.write(line(row));
 }
@@ -171,7 +171,7 @@ export function normalizeMe(body: unknown): Record<string, unknown> {
   let rec = asRecord(body);
   if (Array.isArray(rec.data) && rec.data[0] && typeof rec.data[0] === 'object') {
     const inner = asRecord(rec.data[0]);
-    const { data: _data, ...outer } = rec;
+    const outer = Object.fromEntries(Object.entries(rec).filter(([key]) => key !== 'data'));
     rec = { ...inner };
     for (const [key, value] of Object.entries(outer)) {
       if (value !== undefined) rec[key] = value;
@@ -182,19 +182,26 @@ export function normalizeMe(body: unknown): Record<string, unknown> {
     rec.photo = rec.profile_picture_url;
   }
   if (Array.isArray(rec.websites)) {
-    rec.websites = rec.websites.map((item) => String(item).trim()).filter(Boolean).join(', ');
+    rec.websites = rec.websites
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+      .join(', ');
   }
   return rec;
 }
 
+/** Return a server error only when the body does not also contain a usable profile. */
 export function meErrorMessage(body: unknown): string | undefined {
   const rec = asRecord(body);
   if (typeof rec.error !== 'string' || !rec.error.trim()) return undefined;
   const profile = normalizeMe(body);
-  const hasProfile = ME_FIELDS.some((key) => {
-    const value = profile[key];
-    return value !== undefined && value !== null && value !== '';
-  });
+  /** Treat only non-empty known profile fields as a profile response, preserving the fallback message for other shapes. */
+  const hasProfile = ME_FIELDS.some(
+    /** Identify the presence of a usable profile field. */ (key) => {
+      const value = profile[key];
+      return value !== undefined && value !== null && value !== '';
+    },
+  );
   if (hasProfile) return undefined;
   return rec.error.trim();
 }

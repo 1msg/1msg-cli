@@ -31,7 +31,23 @@
     "clean": "rm -rf dist",
     "start": "node dist/index.js",
     "test": "jest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc -p tsconfig.quality.json",
+    "lint:static": "node tools/quality/node_modules/eslint/bin/eslint.js . --max-warnings=0",
+    "lint:typed": "node tools/quality/node_modules/eslint/bin/eslint.js -c eslint.typed.config.mjs . --max-warnings=0",
+    "lint:unused:production": "node tools/quality/run.mjs unused-production",
+    "lint:unused:full": "node tools/quality/run.mjs unused-full",
+    "lint:duplicates": "node tools/quality/run.mjs duplicates",
+    "quality:guards": "node tools/quality/run.mjs guards",
+    "lint:arch": "node tools/quality/node_modules/dependency-cruiser/bin/dependency-cruiser.mjs --config .dependency-cruiser.cjs src",
+    "test:quality": "node scripts/quality-negative.mjs src && node --test --test-concurrency=1 scripts/quality-hook.test.mjs scripts/quality-extensions.test.mjs",
+    "lint:complexity": "node tools/quality/run.mjs report --kind eslint --name complexity -- node tools/quality/node_modules/eslint/bin/eslint.js -c eslint.complexity.config.mjs . --format json",
+    "lint:duplicates:full": "node tools/quality/run.mjs duplicates-full",
+    "format:check": "node tools/quality/node_modules/prettier/bin/prettier.cjs --check .",
+    "format": "node tools/quality/node_modules/prettier/bin/prettier.cjs --write .",
+    "test:pack": "node scripts/pack-smoke.mjs",
+    "test:preset": "node --test tools/quality/test/*.test.mjs",
+    "hooks:install": "node tools/quality/node_modules/husky/bin.js"
   },
   "dependencies": {
     "@1msg/sdk": "^1.0.4",
@@ -47,5 +63,20 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "packageManager": "npm@11.17.0",
+  "lint-staged": {
+    "*.{js,jsx,mjs,cjs}": [
+      "node tools/quality/staged.mjs --config eslint.config.mjs --",
+      "node tools/quality/node_modules/prettier/bin/prettier.cjs --write",
+      "node tools/quality/node_modules/eslint/bin/eslint.js --config eslint.config.mjs --max-warnings=0 --no-warn-ignored"
+    ],
+    "*.{ts,tsx,mts,cts}": [
+      "node tools/quality/staged.mjs --config eslint.config.mjs --",
+      "node tools/quality/node_modules/prettier/bin/prettier.cjs --write",
+      "node tools/quality/node_modules/eslint/bin/eslint.js --config eslint.config.mjs --max-warnings=0 --no-warn-ignored",
+      "node tools/quality/node_modules/eslint/bin/eslint.js --config eslint.typed.config.mjs --max-warnings=0 --no-warn-ignored"
+    ],
+    "*.{json,md,yml,yaml}": "node tools/quality/node_modules/prettier/bin/prettier.cjs --write"
   }
 }

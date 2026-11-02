@@ -1,9 +1,10 @@
 import { stringify } from 'yaml';
-import { configFilePath } from '../paths';
+
 import { resolveChannel } from '../config';
-import { makeCtx } from './helpers';
-import { runCli } from '../run';
 import { NotConfiguredError } from '../errors';
+import { configFilePath } from '../paths';
+import { runCli } from '../run';
+import { makeCtx } from './helpers';
 
 describe('config precedence', () => {
   it('does not let leftover ONE_MSG_TOKEN override a named channel token', () => {

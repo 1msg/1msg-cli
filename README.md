@@ -10,20 +10,20 @@ HTTP never goes through `fetch` / `axios`. Every API call uses [`@1msg/sdk`](htt
 [![node](https://img.shields.io/node/v/@1msg/cli.svg)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/@1msg/cli.svg)](./LICENSE)
 
-| | |
-|--|--|
-| **npm** | [`@1msg/cli`](https://www.npmjs.com/package/@1msg/cli) |
-| **Binary** | `1msg` (`npx @1msg/cli` is the same program) |
-| **SDK** | [`@1msg/sdk`](https://www.npmjs.com/package/@1msg/sdk) |
-| **Requires** | Node.js ≥ 18 |
-| **Language** | English (`--help`, tables, errors) |
-| **Docs** | [https://docs.1msg.io/](https://docs.1msg.io/) |
+|              |                                                        |
+| ------------ | ------------------------------------------------------ |
+| **npm**      | [`@1msg/cli`](https://www.npmjs.com/package/@1msg/cli) |
+| **Binary**   | `1msg` (`npx @1msg/cli` is the same program)           |
+| **SDK**      | [`@1msg/sdk`](https://www.npmjs.com/package/@1msg/sdk) |
+| **Requires** | Node.js ≥ 18                                           |
+| **Language** | English (`--help`, tables, errors)                     |
+| **Docs**     | [https://docs.1msg.io/](https://docs.1msg.io/)         |
 
 API hosts:
 
-| Environment | `ONE_MSG_BASE_URL` |
-|-------------|--------------------|
-| Live channels | `https://api.1msg.io` |
+| Environment   | `ONE_MSG_BASE_URL`        |
+| ------------- | ------------------------- |
+| Live channels | `https://api.1msg.io`     |
 | Test channels | `https://sandbox.1msg.io` |
 
 Bare hostnames (`api.1msg.io`, `sandbox.1msg.io`) are accepted and normalized to `https://`. Stage / local (`api-stage.1msg.io`, `http://127.0.0.1:3050`) work for `init` / `channel add`.
@@ -97,10 +97,10 @@ Session messages (`1msg send`, most `1msg message *`) need an open 24-hour windo
 
 Config file mode `0600`:
 
-| OS | Path |
-|----|------|
+| OS            | Path                                                               |
+| ------------- | ------------------------------------------------------------------ |
 | Linux / macOS | `~/.config/1msg/config.yaml` (`$XDG_CONFIG_HOME/1msg/config.yaml`) |
-| Windows | `%AppData%\1msg\config.yaml` |
+| Windows       | `%AppData%\1msg\config.yaml`                                       |
 
 ```yaml
 # ~/.config/1msg/config.yaml
@@ -114,7 +114,7 @@ channels:
   acme-test:
     base_url: https://sandbox.1msg.io
     instance_id: ODI371267301
-    token: "…"   # optional; file mode 0600
+    token: '…' # optional; file mode 0600
 ```
 
 There is **no API** to list a customer's channels. `channel list` / `use` / `add` / `remove` / `current` are always local.
@@ -123,12 +123,12 @@ Tokens are never printed in tables, logs, or `--json`.
 
 ### Environment
 
-| Variable | Description |
-|----------|-------------|
-| `ONE_MSG_CHANNEL` | Same as `--channel` (config **name**, not instance id) |
-| `ONE_MSG_BASE_URL` | `https://api.1msg.io` or `https://sandbox.1msg.io` |
-| `ONE_MSG_INSTANCE_ID` | Channel instance id |
-| `ONE_MSG_TOKEN` | Channel API token |
+| Variable              | Description                                            |
+| --------------------- | ------------------------------------------------------ |
+| `ONE_MSG_CHANNEL`     | Same as `--channel` (config **name**, not instance id) |
+| `ONE_MSG_BASE_URL`    | `https://api.1msg.io` or `https://sandbox.1msg.io`     |
+| `ONE_MSG_INSTANCE_ID` | Channel instance id                                    |
+| `ONE_MSG_TOKEN`       | Channel API token                                      |
 
 Deprecated aliases match MCP: `CHAT_API_BASE_URL`, `CHAT_API_TOKEN`, `CHAT_API_INSTANCE_ID`, `CHAT_API_KEY`, `TOKEN`, `INSTANCE_ID`. Prefer `ONE_MSG_*`.
 
@@ -177,16 +177,16 @@ export ONE_MSG_TOKEN=***
 
 Available on every command:
 
-| Flag | Description |
-|------|-------------|
-| `-c, --channel <name>` | Named channel from the config file |
-| `--instance-id <id>` | Override instance id |
-| `--base-url <url>` | Override API root |
-| `--token <token>` | Override token (prefer `ONE_MSG_TOKEN`) |
-| `--json` | Print the API response body as JSON |
-| `--no-color` | Disable ANSI color |
-| `-h, --help` | Help for this command |
-| `-v, --version` | Version (root only) |
+| Flag                   | Description                             |
+| ---------------------- | --------------------------------------- |
+| `-c, --channel <name>` | Named channel from the config file      |
+| `--instance-id <id>`   | Override instance id                    |
+| `--base-url <url>`     | Override API root                       |
+| `--token <token>`      | Override token (prefer `ONE_MSG_TOKEN`) |
+| `--json`               | Print the API response body as JSON     |
+| `--no-color`           | Disable ANSI color                      |
+| `-h, --help`           | Help for this command                   |
+| `-v, --version`        | Version (root only)                     |
 
 `--json` is the **raw API body**. There is no `--raw`. The one CLI-built object is `channel info --json`: `{ "status": <GET /status>, "me": <GET /me> }`.
 
@@ -194,11 +194,11 @@ Available on every command:
 
 Used by send-like commands unless a command says otherwise. Exactly one of `--to` or `--chat-id`. Exception: `message payment` is `--to` only (public schema has no `chatId`).
 
-| Flag | Description |
-|------|-------------|
-| `--to <phone>` | Phone with country code, no `+` |
-| `--chat-id <id>` | `phone@c.us` · `group@g.us` · `BSUID@lid` |
-| `--quote <wamid>` | Reply to this message (`wamid.*`) |
+| Flag              | Description                               |
+| ----------------- | ----------------------------------------- |
+| `--to <phone>`    | Phone with country code, no `+`           |
+| `--chat-id <id>`  | `phone@c.us` · `group@g.us` · `BSUID@lid` |
+| `--quote <wamid>` | Reply to this message (`wamid.*`)         |
 
 Complex bodies (`template add`, interactive messages, calling SDP) take flags for scalars and `--from-file` for JSON (`-` = stdin).
 
@@ -222,18 +222,18 @@ printf '%s' "$ONE_MSG_TOKEN" | 1msg init --name prod \
 
 Local named channels, plus remote status/settings of the selected channel.
 
-| Subcommand | Where | What |
-|------------|-------|------|
-| `list` | local | Channels in the file (`*` = default). Columns: `default`, `name`, `instance_id`, `base_url`. Never `token`. |
-| `use <name\|id>` | local | Set default channel |
-| `add` | local | Add a channel (first channel becomes default unless `--default`) |
-| `remove <name>` | local | Remove by **config name** only |
-| `current` | local | Default name and instance id |
-| `info` | API | `GET /status` then `GET /me` |
-| `status` | API | `GET /status` (alias: `1msg status`) |
-| `settings` / `settings set` | API | `GET/POST /settings` (only flags you pass are sent) |
-| `mm-lite` | API | `GET /mmLiteStatus` |
-| `automation` / `automation set` | API | Conversational automation |
+| Subcommand                      | Where | What                                                                                                        |
+| ------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------- |
+| `list`                          | local | Channels in the file (`*` = default). Columns: `default`, `name`, `instance_id`, `base_url`. Never `token`. |
+| `use <name\|id>`                | local | Set default channel                                                                                         |
+| `add`                           | local | Add a channel (first channel becomes default unless `--default`)                                            |
+| `remove <name>`                 | local | Remove by **config name** only                                                                              |
+| `current`                       | local | Default name and instance id                                                                                |
+| `info`                          | API   | `GET /status` then `GET /me`                                                                                |
+| `status`                        | API   | `GET /status` (alias: `1msg status`)                                                                        |
+| `settings` / `settings set`     | API   | `GET/POST /settings` (only flags you pass are sent)                                                         |
+| `mm-lite`                       | API   | `GET /mmLiteStatus`                                                                                         |
+| `automation` / `automation set` | API   | Conversational automation                                                                                   |
 
 ```bash
 1msg channel list
@@ -283,25 +283,25 @@ to    12020721369@c.us
 
 ### `message`
 
-| Command | API | Notes |
-|---------|-----|-------|
-| `send` | `POST /sendMessage` or `/sendFile` | Same as `1msg send` |
-| `list` | `GET /messages` | Inbox history. Columns: `time`, `chat_id`, `from`, `type`, `id`, `body` (body truncated to 60). If the API returns `notice` and no rows, print the notice and exit 0. |
-| `read` | `POST /readMessage` | `--message-id` only; no chat id. `--typing` = typing indicator (max 25s) |
-| `react` | `POST /sendReaction` | `--emoji` → API `body`; `--message-id` → `quotedMsgId`. Empty emoji removes the reaction |
-| `location` | `POST /sendLocation` | `--lat` / `--lng` |
-| `location-request` | `POST /sendLocationRequest` | Optional `--text` |
-| `contact` | `POST /sendContact` | Flags or `--from-file` |
-| `buttons` | `POST /sendButton` | `--button id:title` repeatable, max 3. Interactive header only via `--from-file` |
-| `menu` | `POST /sendList` | WhatsApp list. `--from-file` required (`sections[]`) |
-| `carousel` | `POST /sendCarousel` | `--from-file` with `cards[]` and/or `params[]`. Carousel **outside** 24h is `template send --params`, not this command |
-| `product` | `POST /sendProduct` | `--catalog-id` + `--product-id`, or `--from-file` for lists |
-| `cta` | `POST /sendCtaUrl` | `--text` / `--button` / `--url` |
-| `address` | `POST /sendAddressMessage` | India and Singapore only (`--country IN\|SG`) |
-| `order` | `POST /sendOrderDetails` | India payments; `--from-file` for order body |
-| `payment` | `POST /sendPaymentRequest` | `--to` + `--region IN\|SG\|BR` only (no `--chat-id`) |
-| `sticker` | `POST /sendSticker` | Exactly one of `--link`, `--media-id`, `--file` |
-| `flow` | `POST /sendFlow` | Session window. Outside 24h send a template with a FLOW button |
+| Command            | API                                | Notes                                                                                                                                                                 |
+| ------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `send`             | `POST /sendMessage` or `/sendFile` | Same as `1msg send`                                                                                                                                                   |
+| `list`             | `GET /messages`                    | Inbox history. Columns: `time`, `chat_id`, `from`, `type`, `id`, `body` (body truncated to 60). If the API returns `notice` and no rows, print the notice and exit 0. |
+| `read`             | `POST /readMessage`                | `--message-id` only; no chat id. `--typing` = typing indicator (max 25s)                                                                                              |
+| `react`            | `POST /sendReaction`               | `--emoji` → API `body`; `--message-id` → `quotedMsgId`. Empty emoji removes the reaction                                                                              |
+| `location`         | `POST /sendLocation`               | `--lat` / `--lng`                                                                                                                                                     |
+| `location-request` | `POST /sendLocationRequest`        | Optional `--text`                                                                                                                                                     |
+| `contact`          | `POST /sendContact`                | Flags or `--from-file`                                                                                                                                                |
+| `buttons`          | `POST /sendButton`                 | `--button id:title` repeatable, max 3. Interactive header only via `--from-file`                                                                                      |
+| `menu`             | `POST /sendList`                   | WhatsApp list. `--from-file` required (`sections[]`)                                                                                                                  |
+| `carousel`         | `POST /sendCarousel`               | `--from-file` with `cards[]` and/or `params[]`. Carousel **outside** 24h is `template send --params`, not this command                                                |
+| `product`          | `POST /sendProduct`                | `--catalog-id` + `--product-id`, or `--from-file` for lists                                                                                                           |
+| `cta`              | `POST /sendCtaUrl`                 | `--text` / `--button` / `--url`                                                                                                                                       |
+| `address`          | `POST /sendAddressMessage`         | India and Singapore only (`--country IN\|SG`)                                                                                                                         |
+| `order`            | `POST /sendOrderDetails`           | India payments; `--from-file` for order body                                                                                                                          |
+| `payment`          | `POST /sendPaymentRequest`         | `--to` + `--region IN\|SG\|BR` only (no `--chat-id`)                                                                                                                  |
+| `sticker`          | `POST /sendSticker`                | Exactly one of `--link`, `--media-id`, `--file`                                                                                                                       |
+| `flow`             | `POST /sendFlow`                   | Session window. Outside 24h send a template with a FLOW button                                                                                                        |
 
 ```bash
 1msg message list --chat-id 12020721369@c.us --limit 20 --last
@@ -486,14 +486,14 @@ Error: channel "missing" not in config
 See:  1msg channel list
 ```
 
-| Exit | Meaning |
-|------|---------|
-| `0` | OK |
-| `1` | Usage |
-| `2` | API 4xx |
-| `3` | API 5xx |
-| `4` | Network |
-| `5` | Not configured (`1msg init`) |
+| Exit | Meaning                      |
+| ---- | ---------------------------- |
+| `0`  | OK                           |
+| `1`  | Usage                        |
+| `2`  | API 4xx                      |
+| `3`  | API 5xx                      |
+| `4`  | Network                      |
+| `5`  | Not configured (`1msg init`) |
 
 ---
 
@@ -509,19 +509,19 @@ Print a script to stdout. The CLI never writes into `/etc` or `$fpath` by itself
 
 What is completed:
 
-| Kind | Source |
-|------|--------|
-| Commands, subcommands, flags | Always, from the command tree |
-| Channel names (`-c` / `--channel` / `channel use` / `remove`) | Keys of `channels:` in the config file (local, no API) |
-| Template names (`template send --name`, `template remove --name`) | Cache written after a successful `1msg template list` |
-| Flow ids / group ids | Not cached; type them |
+| Kind                                                              | Source                                                 |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
+| Commands, subcommands, flags                                      | Always, from the command tree                          |
+| Channel names (`-c` / `--channel` / `channel use` / `remove`)     | Keys of `channels:` in the config file (local, no API) |
+| Template names (`template send --name`, `template remove --name`) | Cache written after a successful `1msg template list`  |
+| Flow ids / group ids                                              | Not cached; type them                                  |
 
 Template cache:
 
-| OS | Path |
-|----|------|
-| Linux / macOS | `~/.cache/1msg/completion.json` |
-| Windows | `%LOCALAPPDATA%\1msg\completion.json` |
+| OS            | Path                                  |
+| ------------- | ------------------------------------- |
+| Linux / macOS | `~/.cache/1msg/completion.json`       |
+| Windows       | `%LOCALAPPDATA%\1msg\completion.json` |
 
 Shape: `{ "updated_at": "<iso>", "channel": "<config name>", "templates": ["hello_world", …] }`. Cache is per default channel name; after `channel use`, run `template list` again or names may be stale. Completing `--name` with no cache: no values (commands/flags still complete).
 
@@ -568,70 +568,70 @@ Once in `$PROFILE`: `. (Join-Path (Split-Path $PROFILE) '1msg.ps1')`.
 
 61 mapped public `operationId`s + explicit skip `deleteMediaLegacy` = all 62 operations in the public OpenAPI spec.
 
-| operationId | CLI |
-|---|---|
-| `sendMessage` | `message send --text` / `send --text` |
-| `sendFile` | `message send --file` / `--media-id` |
-| `createUploadMedia` | `media upload` |
-| `listMessages` | `message list` |
-| `createReadMessage` | `message read` |
-| `sendTemplate` | `template send` |
-| `listTemplates` | `template list` |
-| `addTemplate` | `template add` |
-| `removeTemplate` | `template remove` |
-| `getStatus` | `status` / `channel status` |
-| `getMe` | `me` |
-| `updateMe` | `me update` |
-| `retrieveMedia` | `media get` |
-| `deleteMedia` | `media delete` |
-| `sendReaction` | `message react` |
-| `sendLocation` | `message location` |
-| `sendLocationRequest` | `message location-request` |
-| `sendContact` | `message contact` |
-| `sendButton` | `message buttons` |
-| `sendList` | `message menu` |
-| `sendCarousel` | `message carousel` |
-| `sendProduct` | `message product` |
-| `sendCtaUrl` | `message cta` |
-| `sendAddressMessage` | `message address` |
-| `sendOrderDetails` | `message order` |
-| `sendPaymentRequest` | `message payment` |
-| `sendSticker` | `message sticker` |
-| `sendFlow` | `message flow` |
-| `getWebhook` | `webhook get` |
-| `setWebhook` | `webhook set` |
-| `listSettings` | `channel settings` |
-| `createSettings` | `channel settings set` / `webhook clear` |
-| `getMmLiteStatus` | `channel mm-lite` |
-| `getCommerce` | `catalog get` |
-| `createCommerce` | `catalog set` |
-| `getConversationalAutomation` | `channel automation` |
-| `setConversationalAutomation` | `channel automation set` |
-| `blockUser` | `user block` |
-| `unblockUser` | `user unblock` |
-| `listBlockedUsers` | `user blocked` |
-| `createGroups` | `group create` |
-| `listGroups` | `group list` |
-| `getGroupsGroupId` | `group get` |
-| `createGroupsGroupId` | `group update` |
-| `deleteGroupsGroupId` | `group delete` |
-| `getGroupsGroupIdInvitelink` | `group invite-link` |
-| `createGroupsGroupIdInvitelink` | `group invite-link reset` |
-| `createFlows` | `flow create` |
-| `listFlows` | `flow list` |
-| `getFlowsFlowId` | `flow get` |
-| `deleteFlowsFlowId` | `flow delete` |
-| `patchFlowsFlowIdMetadata` | `flow metadata` |
-| `patchFlowsFlowIdAssets` | `flow assets` |
-| `getFlowsFlowIdPreview` | `flow preview` |
-| `createFlowsFlowIdPublish` | `flow publish` |
-| `createFlowsFlowIdDeprecate` | `flow deprecate` |
-| `getCallingSettings` | `call settings` |
-| `updateCallingSettings` | `call settings set` |
-| `initiateCall` | `call connect` / `pre-accept` / `accept` / `reject` / `hangup` |
-| `getWhatsappBusinessEncryption` | `flow encryption` |
-| `setWhatsappBusinessEncryption` | `flow encryption set` |
-| `deleteMediaLegacy` | not exposed |
+| operationId                     | CLI                                                            |
+| ------------------------------- | -------------------------------------------------------------- |
+| `sendMessage`                   | `message send --text` / `send --text`                          |
+| `sendFile`                      | `message send --file` / `--media-id`                           |
+| `createUploadMedia`             | `media upload`                                                 |
+| `listMessages`                  | `message list`                                                 |
+| `createReadMessage`             | `message read`                                                 |
+| `sendTemplate`                  | `template send`                                                |
+| `listTemplates`                 | `template list`                                                |
+| `addTemplate`                   | `template add`                                                 |
+| `removeTemplate`                | `template remove`                                              |
+| `getStatus`                     | `status` / `channel status`                                    |
+| `getMe`                         | `me`                                                           |
+| `updateMe`                      | `me update`                                                    |
+| `retrieveMedia`                 | `media get`                                                    |
+| `deleteMedia`                   | `media delete`                                                 |
+| `sendReaction`                  | `message react`                                                |
+| `sendLocation`                  | `message location`                                             |
+| `sendLocationRequest`           | `message location-request`                                     |
+| `sendContact`                   | `message contact`                                              |
+| `sendButton`                    | `message buttons`                                              |
+| `sendList`                      | `message menu`                                                 |
+| `sendCarousel`                  | `message carousel`                                             |
+| `sendProduct`                   | `message product`                                              |
+| `sendCtaUrl`                    | `message cta`                                                  |
+| `sendAddressMessage`            | `message address`                                              |
+| `sendOrderDetails`              | `message order`                                                |
+| `sendPaymentRequest`            | `message payment`                                              |
+| `sendSticker`                   | `message sticker`                                              |
+| `sendFlow`                      | `message flow`                                                 |
+| `getWebhook`                    | `webhook get`                                                  |
+| `setWebhook`                    | `webhook set`                                                  |
+| `listSettings`                  | `channel settings`                                             |
+| `createSettings`                | `channel settings set` / `webhook clear`                       |
+| `getMmLiteStatus`               | `channel mm-lite`                                              |
+| `getCommerce`                   | `catalog get`                                                  |
+| `createCommerce`                | `catalog set`                                                  |
+| `getConversationalAutomation`   | `channel automation`                                           |
+| `setConversationalAutomation`   | `channel automation set`                                       |
+| `blockUser`                     | `user block`                                                   |
+| `unblockUser`                   | `user unblock`                                                 |
+| `listBlockedUsers`              | `user blocked`                                                 |
+| `createGroups`                  | `group create`                                                 |
+| `listGroups`                    | `group list`                                                   |
+| `getGroupsGroupId`              | `group get`                                                    |
+| `createGroupsGroupId`           | `group update`                                                 |
+| `deleteGroupsGroupId`           | `group delete`                                                 |
+| `getGroupsGroupIdInvitelink`    | `group invite-link`                                            |
+| `createGroupsGroupIdInvitelink` | `group invite-link reset`                                      |
+| `createFlows`                   | `flow create`                                                  |
+| `listFlows`                     | `flow list`                                                    |
+| `getFlowsFlowId`                | `flow get`                                                     |
+| `deleteFlowsFlowId`             | `flow delete`                                                  |
+| `patchFlowsFlowIdMetadata`      | `flow metadata`                                                |
+| `patchFlowsFlowIdAssets`        | `flow assets`                                                  |
+| `getFlowsFlowIdPreview`         | `flow preview`                                                 |
+| `createFlowsFlowIdPublish`      | `flow publish`                                                 |
+| `createFlowsFlowIdDeprecate`    | `flow deprecate`                                               |
+| `getCallingSettings`            | `call settings`                                                |
+| `updateCallingSettings`         | `call settings set`                                            |
+| `initiateCall`                  | `call connect` / `pre-accept` / `accept` / `reject` / `hangup` |
+| `getWhatsappBusinessEncryption` | `flow encryption`                                              |
+| `setWhatsappBusinessEncryption` | `flow encryption set`                                          |
+| `deleteMediaLegacy`             | not exposed                                                    |
 
 Local-only (no `operationId`): `init`, `channel list|use|add|remove|current`, `completion`, `version`.
 
@@ -651,17 +651,17 @@ OpenAPI YAML (1msg-api monorepo)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-Coverage is asserted in the `1msg-api` monorepo: 61 mapped public `operationId`s + explicit `deleteMediaLegacy` skip = 62. `--help` text is snapshot-tested against the RFC.
+Coverage is asserted in this standalone package using the public contract pinned in `quality/contracts/provenance.json`: 61 mapped public `operationId`s + explicit `deleteMediaLegacy` exclusion = 62. Every `--help` page is checked against the RFC from the same producer commit. Missing or changed input files fail the tests.
 
 ---
 
 ## Development
 
-| Script | Purpose |
-|--------|---------|
-| `npm run build` | Compile TypeScript → `dist/` |
-| `npm test` | Jest unit tests (`--help` snapshots, precedence, SDK-only architecture) |
-| `npm start` | Run `dist/index.js` |
+| Script               | Purpose                                                                     |
+| -------------------- | --------------------------------------------------------------------------- |
+| `npm run build`      | Compile TypeScript → `dist/`                                                |
+| `npm test`           | Jest unit tests (`--help` snapshots, precedence, SDK-only architecture)     |
+| `npm start`          | Run `dist/index.js`                                                         |
 | `npm pack --dry-run` | What npm would publish (`dist/`, this README, `ARCHITECTURE.md`, `LICENSE`) |
 
 CI (`.github/workflows/ci.yml`): install, build, test, smoke `--help` / `version`, `npm pack --dry-run`.

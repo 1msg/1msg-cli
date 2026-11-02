@@ -1,5 +1,11 @@
 import type { Command } from 'commander';
+
+import { SDK_VERSION } from '@1msg/sdk';
+
 import type { CliContext } from './context';
+
+import { printChannelStatus } from './channel-status';
+import { completeKind, completionScript } from './completion';
 import {
   emptyConfig,
   envInstanceId,
@@ -12,13 +18,11 @@ import {
   type GlobalFlags,
 } from './config';
 import { CliExit, usage } from './errors';
-import { ok, outputOpts, printApiResult, withClient } from './execute';
+import { ok, outputOpts } from './execute';
 import { helpFor } from './help-text';
-import { asRecord, printKv, printTable } from './output';
+import { printKv, printTable } from './output';
 import { configFilePath } from './paths';
 import { CLI_VERSION } from './version';
-import { SDK_VERSION } from '@1msg/sdk';
-import { completeKind, completionScript } from './completion';
 
 export function globalsFrom(cmd: Command): GlobalFlags {
   const opts = cmd.optsWithGlobals() as Record<string, unknown>;
@@ -53,7 +57,11 @@ export function missingSubcommand(ctx: CliContext, helpPath: string): never {
   throw new CliExit(1);
 }
 
-async function maybeToken(ctx: CliContext, opts: { tokenStdin?: boolean }): Promise<string | undefined> {
+/** Read and trim stdin only when explicitly requested; otherwise use the configured environment token. */
+async function maybeToken(
+  ctx: CliContext,
+  opts: { tokenStdin?: boolean | undefined },
+): Promise<string | undefined> {
   if (opts.tokenStdin) {
     const token = (await ctx.readStdin()).trim();
     return token || undefined;
@@ -61,25 +69,14 @@ async function maybeToken(ctx: CliContext, opts: { tokenStdin?: boolean }): Prom
   return envToken(ctx);
 }
 
-async function verifyStatus(ctx: CliContext, flags: GlobalFlags): Promise<void> {
-  const body = await withClient(ctx, flags, (client) => client.channel.getStatus(client.config.token));
-  printApiResult(ctx, flags, body, () => {
-    const rec = asRecord(body);
-    printKv(ctx.stdout, [
-      ['status', rec.status],
-      ['accountStatus', rec.accountStatus],
-      ['mm_lite_available', rec.mm_lite_available],
-    ]);
-  });
-}
-
+/** Resolve missing channel credentials interactively when allowed and validate required fields before persistence or verification. */
 async function promptChannel(
   ctx: CliContext,
   opts: {
-    name?: string;
-    baseUrl?: string;
-    instanceId?: string;
-    tokenStdin?: boolean;
+    name?: string | undefined;
+    baseUrl?: string | undefined;
+    instanceId?: string | undefined;
+    tokenStdin?: boolean | undefined;
   },
   interactive: boolean,
 ): Promise<{ name: string; baseUrl: string; instanceId: string; token: string }> {
@@ -95,7 +92,9 @@ async function promptChannel(
     }
     if (!baseUrl) {
       const answer = (
-        await ctx.prompt.question('Host: (1) live https://api.1msg.io  (2) sandbox https://sandbox.1msg.io [1]: ')
+        await ctx.prompt.question(
+          'Host: (1) live https://api.1msg.io  (2) sandbox https://sandbox.1msg.io [1]: ',
+        )
       ).trim();
       if (answer === '2' || /sandbox/i.test(answer)) baseUrl = 'https://sandbox.1msg.io';
       else if (answer && answer !== '1') baseUrl = answer;
@@ -145,14 +144,15 @@ function upsertChannel(
   return config;
 }
 
+/** Gather channel configuration, persist the selected default and optionally verify it; injected IO owns terminal interaction. */
 export async function handleInit(
   ctx: CliContext,
   cmd: Command,
   opts: {
-    name?: string;
-    baseUrl?: string;
-    instanceId?: string;
-    tokenStdin?: boolean;
+    name?: string | undefined;
+    baseUrl?: string | undefined;
+    instanceId?: string | undefined;
+    tokenStdin?: boolean | undefined;
     verify?: boolean;
   },
 ): Promise<number> {
@@ -173,7 +173,7 @@ export async function handleInit(
   upsertChannel(ctx, { ...channel, makeDefault });
   ctx.stderr.write(`Wrote ${configFilePath(ctx)}\n`);
   if (opts.verify === false) return ok();
-  await verifyStatus(ctx, {
+  await printChannelStatus(ctx, {
     ...flags,
     channel: channel.name,
     token: channel.token,
@@ -183,21 +183,24 @@ export async function handleInit(
   return ok();
 }
 
+/** Add or update a named channel using parsed flags and optional prompts, then verify unless the user opted out. */
 export async function handleChannelAdd(
   ctx: CliContext,
   cmd: Command,
   opts: {
-    name?: string;
-    baseUrl?: string;
-    instanceId?: string;
-    tokenStdin?: boolean;
+    name?: string | undefined;
+    baseUrl?: string | undefined;
+    instanceId?: string | undefined;
+    tokenStdin?: boolean | undefined;
     default?: boolean;
     verify?: boolean;
   },
 ): Promise<number> {
   const flags = globalsFrom(cmd);
   const nonInteractive = Boolean(
-    opts.name && (opts.baseUrl || flags.baseUrl) && (opts.instanceId || flags.instanceId || envInstanceId(ctx)),
+    opts.name &&
+    (opts.baseUrl || flags.baseUrl) &&
+    (opts.instanceId || flags.instanceId || envInstanceId(ctx)),
   );
   const interactive = !nonInteractive;
   if (!interactive && !opts.name) usage('--name is required', '1msg channel add --help');
@@ -214,7 +217,7 @@ export async function handleChannelAdd(
   upsertChannel(ctx, { ...channel, makeDefault: Boolean(opts.default) });
   ctx.stderr.write(`Wrote ${configFilePath(ctx)}\n`);
   if (opts.verify === false) return ok();
-  await verifyStatus(ctx, {
+  await printChannelStatus(ctx, {
     ...globalsFrom(cmd),
     channel: channel.name,
     token: channel.token,
@@ -242,6 +245,7 @@ export function handleChannelList(ctx: CliContext, cmd: Command): number {
   return ok();
 }
 
+/** Select an existing unambiguous channel as the default, persist it, and print the selected instance. */
 export function handleChannelUse(ctx: CliContext, nameOrId: string | undefined): number {
   if (!nameOrId) usage('missing channel name or instance id', '1msg channel use --help');
   const config = loadConfig(ctx);
@@ -250,10 +254,11 @@ export function handleChannelUse(ctx: CliContext, nameOrId: string | undefined):
   config.default_channel = name;
   saveConfig(ctx, config);
   const block = config.channels[name];
-  ctx.stdout.write(`${name}  ${block.instance_id ?? ''}\n`);
+  ctx.stdout.write(`${name}  ${block?.instance_id ?? ''}\n`);
   return ok();
 }
 
+/** Remove the named channel and select the next remaining default; omit the default field when no channels remain. */
 export function handleChannelRemove(ctx: CliContext, name: string | undefined): number {
   if (!name) usage('missing channel name', '1msg channel --help');
   const config = loadConfig(ctx);
@@ -263,13 +268,15 @@ export function handleChannelRemove(ctx: CliContext, name: string | undefined): 
   delete config.channels[name];
   if (config.default_channel === name) {
     const remaining = Object.keys(config.channels);
-    config.default_channel = remaining.length === 1 ? remaining[0] : remaining[0];
-    if (remaining.length === 0) delete config.default_channel;
+    const nextDefault = remaining[0];
+    if (nextDefault === undefined) delete config.default_channel;
+    else config.default_channel = nextDefault;
   }
   saveConfig(ctx, config);
   return ok();
 }
 
+/** Print the resolved current channel using the requested format; configuration failures follow normal CLI error handling. */
 export function handleChannelCurrent(ctx: CliContext, cmd: Command): number {
   const config = loadConfig(ctx);
   const flags = globalsFrom(cmd);
@@ -281,7 +288,7 @@ export function handleChannelCurrent(ctx: CliContext, cmd: Command): number {
     ctx.stdout.write(`${JSON.stringify(body, null, 2)}\n`);
     return ok();
   }
-  ctx.stdout.write(`${name}  ${block.instance_id ?? ''}\n`);
+  ctx.stdout.write(`${name}  ${block?.instance_id ?? ''}\n`);
   return ok();
 }
 

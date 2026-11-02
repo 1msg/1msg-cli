@@ -1,6 +1,11 @@
 import { Command, CommanderError, Option } from 'commander';
+
 import type { CliContext } from './context';
+
+import { handleChannelInfo, handleStatus } from './channel-rest';
+import { applyCommon, bindCommandAction, wrap } from './command-binding';
 import { CliExit, UsageError } from './errors';
+import { registerFlowCommands } from './flow-program';
 import { collect } from './io';
 import {
   handleChannelAdd,
@@ -15,6 +20,36 @@ import {
   missingSubcommand,
   writeHelp,
 } from './local';
+import { handleMessageSticker } from './message-sticker';
+import {
+  handleAutomation,
+  handleAutomationSet,
+  handleCallConnect,
+  handleCallControl,
+  handleCallSettings,
+  handleCallSettingsSet,
+  handleCatalogGet,
+  handleCatalogSet,
+  handleChannelSettings,
+  handleChannelSettingsSet,
+  handleGroupCreate,
+  handleGroupDelete,
+  handleGroupGet,
+  handleGroupInviteLink,
+  handleGroupList,
+  handleGroupUpdate,
+  handleMe,
+  handleMeUpdate,
+  handleMediaDelete,
+  handleMediaGet,
+  handleMediaUpload,
+  handleMmLite,
+  handleUserBlock,
+  handleUserBlocked,
+  handleWebhookClear,
+  handleWebhookGet,
+  handleWebhookSet,
+} from './rest';
 import {
   handleMessageAddress,
   handleMessageButtons,
@@ -31,89 +66,12 @@ import {
   handleMessageProduct,
   handleMessageReact,
   handleMessageRead,
-  handleMessageSticker,
   handleSend,
   handleTemplateAdd,
   handleTemplateList,
   handleTemplateRemove,
   handleTemplateSend,
 } from './send';
-import {
-  handleAutomation,
-  handleAutomationSet,
-  handleCallConnect,
-  handleCallControl,
-  handleCallSettings,
-  handleCallSettingsSet,
-  handleCatalogGet,
-  handleCatalogSet,
-  handleChannelInfo,
-  handleChannelSettings,
-  handleChannelSettingsSet,
-  handleFlowAssets,
-  handleFlowCreate,
-  handleFlowEncryption,
-  handleFlowEncryptionSet,
-  handleFlowIdOp,
-  handleFlowList,
-  handleFlowMetadata,
-  handleGroupCreate,
-  handleGroupDelete,
-  handleGroupGet,
-  handleGroupInviteLink,
-  handleGroupList,
-  handleGroupUpdate,
-  handleMe,
-  handleMeUpdate,
-  handleMediaDelete,
-  handleMediaGet,
-  handleMediaUpload,
-  handleMmLite,
-  handleStatus,
-  handleUserBlock,
-  handleUserBlocked,
-  handleWebhookClear,
-  handleWebhookGet,
-  handleWebhookSet,
-} from './rest';
-
-function wrap(fn: (this: Command, ...args: any[]) => unknown) {
-  return async function (this: Command, ...args: any[]): Promise<void> {
-    await fn.apply(this, args);
-  };
-}
-
-function commandPath(cmd: Command): string {
-  const names: string[] = [];
-  let current: Command | null = cmd;
-  while (current) {
-    const name = current.name();
-    if (name && name !== '1msg') names.unshift(name);
-    current = current.parent;
-  }
-  return names.join(' ');
-}
-
-function applyCommon(cmd: Command, ctx: CliContext, helpPath?: string): Command {
-  cmd.helpOption(false);
-  cmd.addHelpCommand(false);
-  cmd.option('-c, --channel <name>');
-  cmd.option('--instance-id <id>');
-  cmd.option('--base-url <url>');
-  cmd.option('--token <token>');
-  cmd.option('--json');
-  cmd.addOption(new Option('--no-color'));
-  cmd.option('-h, --help');
-  cmd.hook('preAction', (thisCommand, actionCommand) => {
-    if (thisCommand !== actionCommand) return;
-    const opts = actionCommand.optsWithGlobals() as { help?: boolean };
-    if (opts.help) {
-      writeHelp(ctx, helpPath || commandPath(actionCommand) || 'root');
-      throw new CliExit(0);
-    }
-  });
-  return cmd;
-}
 
 function destFlags(cmd: Command): Command {
   cmd.option('--to <phone>');
@@ -122,6 +80,7 @@ function destFlags(cmd: Command): Command {
   return cmd;
 }
 
+/** Compose the Commander command tree and typed handlers; parsing performs no API request until an action runs. */
 export function createProgram(ctx: CliContext): Command {
   const program = new Command();
   program.name('1msg');
@@ -138,24 +97,26 @@ export function createProgram(ctx: CliContext): Command {
   applyCommon(program, ctx, 'root');
   program.option('-v, --version');
 
-  program.action(wrap((opts: { help?: boolean; version?: boolean }) => {
-    if (opts.version) {
-      handleVersion(ctx);
-      return;
-    }
-    if (opts.help) {
+  program.action(
+    wrap((opts: { help?: boolean; version?: boolean }) => {
+      if (opts.version) {
+        handleVersion(ctx);
+        return;
+      }
+      if (opts.help) {
+        writeHelp(ctx, 'root');
+        throw new CliExit(0);
+      }
       writeHelp(ctx, 'root');
-      throw new CliExit(0);
-    }
-    writeHelp(ctx, 'root');
-    throw new CliExit(1);
-  }));
+      throw new CliExit(1);
+    }),
+  );
 
   const init = applyCommon(program.command('init'), ctx, 'init');
   init.option('--name <name>');
   init.option('--token-stdin');
   init.addOption(new Option('--no-verify'));
-  init.action(wrap((opts) => handleInit(ctx, init, opts)));
+  bindCommandAction(init, ctx, handleInit);
 
   const send = applyCommon(program.command('send'), ctx, 'send');
   destFlags(send);
@@ -166,7 +127,7 @@ export function createProgram(ctx: CliContext): Command {
   send.option('--media-id <id>');
   send.option('--media-type <type>');
   send.option('--voice');
-  send.action(wrap((opts) => handleSend(ctx, send, opts)));
+  bindCommandAction(send, ctx, handleSend);
 
   const message = applyCommon(program.command('message'), ctx, 'message');
   message.action(wrap(() => missingSubcommand(ctx, 'message')));
@@ -180,7 +141,7 @@ export function createProgram(ctx: CliContext): Command {
   messageSend.option('--media-id <id>');
   messageSend.option('--media-type <type>');
   messageSend.option('--voice');
-  messageSend.action(wrap((opts) => handleSend(ctx, messageSend, opts)));
+  bindCommandAction(messageSend, ctx, handleSend);
 
   const messageList = applyCommon(message.command('list'), ctx, 'message list');
   messageList.option('--chat-id <id>');
@@ -191,18 +152,18 @@ export function createProgram(ctx: CliContext): Command {
   messageList.option('--max-time <unix>');
   messageList.option('--first-number <n>');
   messageList.option('--last-number <n>');
-  messageList.action(wrap((opts) => handleMessageList(ctx, messageList, opts)));
+  bindCommandAction(messageList, ctx, handleMessageList);
 
   const messageRead = applyCommon(message.command('read'), ctx, 'message read');
   messageRead.option('--message-id <id>');
   messageRead.option('--typing');
-  messageRead.action(wrap((opts) => handleMessageRead(ctx, messageRead, opts)));
+  bindCommandAction(messageRead, ctx, handleMessageRead);
 
   const messageReact = applyCommon(message.command('react'), ctx, 'message react');
   destFlags(messageReact);
   messageReact.option('--message-id <id>');
   messageReact.option('--emoji <emoji>');
-  messageReact.action(wrap((opts) => handleMessageReact(ctx, messageReact, opts)));
+  bindCommandAction(messageReact, ctx, handleMessageReact);
 
   const messageLocation = applyCommon(message.command('location'), ctx, 'message location');
   destFlags(messageLocation);
@@ -210,7 +171,7 @@ export function createProgram(ctx: CliContext): Command {
   messageLocation.option('--lng <n>');
   messageLocation.option('--name <text>');
   messageLocation.option('--address <text>');
-  messageLocation.action(wrap((opts) => handleMessageLocation(ctx, messageLocation, opts)));
+  bindCommandAction(messageLocation, ctx, handleMessageLocation);
 
   const messageLocReq = applyCommon(
     message.command('location-request'),
@@ -219,7 +180,7 @@ export function createProgram(ctx: CliContext): Command {
   );
   destFlags(messageLocReq);
   messageLocReq.option('--text <body>');
-  messageLocReq.action(wrap((opts) => handleMessageLocationRequest(ctx, messageLocReq, opts)));
+  bindCommandAction(messageLocReq, ctx, handleMessageLocationRequest);
 
   const messageContact = applyCommon(message.command('contact'), ctx, 'message contact');
   destFlags(messageContact);
@@ -232,7 +193,7 @@ export function createProgram(ctx: CliContext): Command {
   messageContact.option('--title <text>');
   messageContact.option('--url <url>');
   messageContact.option('--from-file <path>');
-  messageContact.action(wrap((opts) => handleMessageContact(ctx, messageContact, opts)));
+  bindCommandAction(messageContact, ctx, handleMessageContact);
 
   const messageButtons = applyCommon(message.command('buttons'), ctx, 'message buttons');
   destFlags(messageButtons);
@@ -240,7 +201,7 @@ export function createProgram(ctx: CliContext): Command {
   messageButtons.option('--footer <text>');
   messageButtons.option('--button <id:title>', 'repeatable', collect, [] as string[]);
   messageButtons.option('--from-file <path>');
-  messageButtons.action(wrap((opts) => handleMessageButtons(ctx, messageButtons, opts)));
+  bindCommandAction(messageButtons, ctx, handleMessageButtons);
 
   const messageMenu = applyCommon(message.command('menu'), ctx, 'message menu');
   destFlags(messageMenu);
@@ -249,13 +210,13 @@ export function createProgram(ctx: CliContext): Command {
   messageMenu.option('--button-text <text>');
   messageMenu.option('--title <text>');
   messageMenu.option('--footer <text>');
-  messageMenu.action(wrap((opts) => handleMessageMenu(ctx, messageMenu, opts)));
+  bindCommandAction(messageMenu, ctx, handleMessageMenu);
 
   const messageCarousel = applyCommon(message.command('carousel'), ctx, 'message carousel');
   destFlags(messageCarousel);
   messageCarousel.option('--text <body>');
   messageCarousel.option('--from-file <path>');
-  messageCarousel.action(wrap((opts) => handleMessageCarousel(ctx, messageCarousel, opts)));
+  bindCommandAction(messageCarousel, ctx, handleMessageCarousel);
 
   const messageProduct = applyCommon(message.command('product'), ctx, 'message product');
   destFlags(messageProduct);
@@ -265,7 +226,7 @@ export function createProgram(ctx: CliContext): Command {
   messageProduct.option('--catalog-id <id>');
   messageProduct.option('--product-id <retailer-id>');
   messageProduct.option('--from-file <path>');
-  messageProduct.action(wrap((opts) => handleMessageProduct(ctx, messageProduct, opts)));
+  bindCommandAction(messageProduct, ctx, handleMessageProduct);
 
   const messageCta = applyCommon(message.command('cta'), ctx, 'message cta');
   destFlags(messageCta);
@@ -274,14 +235,14 @@ export function createProgram(ctx: CliContext): Command {
   messageCta.option('--url <https>');
   messageCta.option('--footer <text>');
   messageCta.option('--from-file <path>');
-  messageCta.action(wrap((opts) => handleMessageCta(ctx, messageCta, opts)));
+  bindCommandAction(messageCta, ctx, handleMessageCta);
 
   const messageAddress = applyCommon(message.command('address'), ctx, 'message address');
   destFlags(messageAddress);
   messageAddress.option('--text <body>');
   messageAddress.option('--country <IN|SG>');
   messageAddress.option('--from-file <path>');
-  messageAddress.action(wrap((opts) => handleMessageAddress(ctx, messageAddress, opts)));
+  bindCommandAction(messageAddress, ctx, handleMessageAddress);
 
   const messageOrder = applyCommon(message.command('order'), ctx, 'message order');
   destFlags(messageOrder);
@@ -291,7 +252,7 @@ export function createProgram(ctx: CliContext): Command {
   messageOrder.option('--reference-id <id>');
   messageOrder.option('--currency <code>');
   messageOrder.option('--from-file <path>');
-  messageOrder.action(wrap((opts) => handleMessageOrder(ctx, messageOrder, opts)));
+  bindCommandAction(messageOrder, ctx, handleMessageOrder);
 
   const messagePayment = applyCommon(message.command('payment'), ctx, 'message payment');
   messagePayment.option('--to <phone>');
@@ -299,14 +260,14 @@ export function createProgram(ctx: CliContext): Command {
   messagePayment.option('--region <IN|SG|BR>');
   messagePayment.option('--text <body>');
   messagePayment.option('--from-file <path>');
-  messagePayment.action(wrap((opts) => handleMessagePayment(ctx, messagePayment, opts)));
+  bindCommandAction(messagePayment, ctx, handleMessagePayment);
 
   const messageSticker = applyCommon(message.command('sticker'), ctx, 'message sticker');
   destFlags(messageSticker);
   messageSticker.option('--link <https>');
   messageSticker.option('--media-id <id>');
   messageSticker.option('--file <path>');
-  messageSticker.action(wrap((opts) => handleMessageSticker(ctx, messageSticker, opts)));
+  bindCommandAction(messageSticker, ctx, handleMessageSticker);
 
   const messageFlow = applyCommon(message.command('flow'), ctx, 'message flow');
   destFlags(messageFlow);
@@ -320,7 +281,7 @@ export function createProgram(ctx: CliContext): Command {
   messageFlow.option('--screen <id>');
   messageFlow.option('--mode <draft|published>');
   messageFlow.option('--from-file <path>');
-  messageFlow.action(wrap((opts) => handleMessageFlow(ctx, messageFlow, opts)));
+  bindCommandAction(messageFlow, ctx, handleMessageFlow);
 
   const template = applyCommon(program.command('template'), ctx, 'template');
   template.action(wrap(() => missingSubcommand(ctx, 'template')));
@@ -329,7 +290,7 @@ export function createProgram(ctx: CliContext): Command {
   templateList.option('--limit <n>');
   templateList.option('--offset <n>');
   templateList.option('--sort <id|name|status>');
-  templateList.action(wrap((opts) => handleTemplateList(ctx, templateList, opts)));
+  bindCommandAction(templateList, ctx, handleTemplateList);
 
   const templateSend = applyCommon(template.command('send'), ctx, 'template send');
   destFlags(templateSend);
@@ -341,25 +302,23 @@ export function createProgram(ctx: CliContext): Command {
   templateSend.option('--mm-lite');
   templateSend.option('--activity-sharing');
   templateSend.option('--ttl <seconds>');
-  templateSend.action(wrap((opts) => handleTemplateSend(ctx, templateSend, opts)));
+  bindCommandAction(templateSend, ctx, handleTemplateSend);
 
   const templateAdd = applyCommon(template.command('add'), ctx, 'template add');
   templateAdd.option('--from-file <path>');
   templateAdd.option('--name <name>');
   templateAdd.option('--category <MARKETING|UTILITY|AUTHENTICATION>');
   templateAdd.option('--language <code>');
-  templateAdd.action(wrap((opts) => handleTemplateAdd(ctx, templateAdd, opts)));
+  bindCommandAction(templateAdd, ctx, handleTemplateAdd);
 
   const templateRemove = applyCommon(template.command('remove'), ctx, 'template remove');
   templateRemove.option('--name <name>');
-  templateRemove.action(wrap((opts) => handleTemplateRemove(ctx, templateRemove, opts)));
+  bindCommandAction(templateRemove, ctx, handleTemplateRemove);
 
   const channel = applyCommon(program.command('channel'), ctx, 'channel');
   channel.action(wrap(() => missingSubcommand(ctx, 'channel')));
 
-  applyCommon(channel.command('list'), ctx, 'channel').action(wrap(function (this: Command) {
-    return handleChannelList(ctx, this);
-  }));
+  bindCommandAction(applyCommon(channel.command('list'), ctx, 'channel'), ctx, handleChannelList);
   applyCommon(channel.command('use'), ctx, 'channel use')
     .argument('[name-or-id]')
     .action(wrap((nameOrId: string | undefined) => handleChannelUse(ctx, nameOrId)));
@@ -368,24 +327,28 @@ export function createProgram(ctx: CliContext): Command {
   channelAdd.option('--token-stdin');
   channelAdd.option('--default');
   channelAdd.addOption(new Option('--no-verify'));
-  channelAdd.action(wrap((opts) => handleChannelAdd(ctx, channelAdd, opts)));
+  bindCommandAction(channelAdd, ctx, handleChannelAdd);
   applyCommon(channel.command('remove'), ctx, 'channel')
     .argument('[name]')
     .action(wrap((name: string | undefined) => handleChannelRemove(ctx, name)));
-  applyCommon(channel.command('current'), ctx, 'channel').action(wrap(function (this: Command) {
-    return handleChannelCurrent(ctx, this);
-  }));
-  applyCommon(channel.command('info'), ctx, 'channel info').action(wrap(function (this: Command) {
-    return handleChannelInfo(ctx, this);
-  }));
-  applyCommon(channel.command('status'), ctx, 'channel status').action(wrap(function (this: Command) {
-    return handleStatus(ctx, this);
-  }));
+  bindCommandAction(
+    applyCommon(channel.command('current'), ctx, 'channel'),
+    ctx,
+    handleChannelCurrent,
+  );
+  bindCommandAction(
+    applyCommon(channel.command('info'), ctx, 'channel info'),
+    ctx,
+    handleChannelInfo,
+  );
+  bindCommandAction(
+    applyCommon(channel.command('status'), ctx, 'channel status'),
+    ctx,
+    handleStatus,
+  );
 
   const settings = applyCommon(channel.command('settings'), ctx, 'channel');
-  settings.action(wrap(function (this: Command) {
-    return handleChannelSettings(ctx, this);
-  }));
+  bindCommandAction(settings, ctx, handleChannelSettings);
   const settingsSet = applyCommon(settings.command('set'), ctx, 'channel');
   settingsSet.option('--webhook-url <url>', 'repeatable', collect, [] as string[]);
   settingsSet.option('--guaranteed-hooks');
@@ -398,26 +361,20 @@ export function createProgram(ctx: CliContext): Command {
   settingsSet.option('--no-template-analytics');
   settingsSet.option('--cta-tracking-opt-out');
   settingsSet.option('--no-cta-tracking-opt-out');
-  settingsSet.action(wrap((opts) => handleChannelSettingsSet(ctx, settingsSet, opts)));
+  bindCommandAction(settingsSet, ctx, handleChannelSettingsSet);
 
-  applyCommon(channel.command('mm-lite'), ctx, 'channel').action(wrap(function (this: Command) {
-    return handleMmLite(ctx, this);
-  }));
+  bindCommandAction(applyCommon(channel.command('mm-lite'), ctx, 'channel'), ctx, handleMmLite);
   const automation = applyCommon(channel.command('automation'), ctx, 'channel');
-  automation.action(wrap(function (this: Command) {
-    return handleAutomation(ctx, this);
-  }));
+  bindCommandAction(automation, ctx, handleAutomation);
   const automationSet = applyCommon(automation.command('set'), ctx, 'channel');
   automationSet.option('--welcome');
   automationSet.option('--no-welcome');
   automationSet.option('--prompt <text>', 'repeatable', collect, [] as string[]);
   automationSet.option('--command <name:description>', 'repeatable', collect, [] as string[]);
-  automationSet.action(wrap((opts) => handleAutomationSet(ctx, automationSet, opts)));
+  bindCommandAction(automationSet, ctx, handleAutomationSet);
 
   const me = applyCommon(program.command('me'), ctx, 'me');
-  me.action(wrap(function (this: Command) {
-    return handleMe(ctx, this);
-  }));
+  bindCommandAction(me, ctx, handleMe);
   const meUpdate = applyCommon(me.command('update'), ctx, 'me');
   meUpdate.option('--about <text>');
   meUpdate.option('--address <text>');
@@ -426,25 +383,23 @@ export function createProgram(ctx: CliContext): Command {
   meUpdate.option('--vertical <text>');
   meUpdate.option('--photo <url>');
   meUpdate.option('--website <url>', 'repeatable', collect, [] as string[]);
-  meUpdate.action(wrap((opts) => handleMeUpdate(ctx, meUpdate, opts)));
+  bindCommandAction(meUpdate, ctx, handleMeUpdate);
 
   const status = applyCommon(program.command('status'), ctx, 'status');
-  status.action(wrap(function (this: Command) {
-    return handleStatus(ctx, this);
-  }));
+  bindCommandAction(status, ctx, handleStatus);
 
   const media = applyCommon(program.command('media'), ctx, 'media');
   media.action(wrap(() => missingSubcommand(ctx, 'media')));
   const mediaUpload = applyCommon(media.command('upload'), ctx, 'media');
   mediaUpload.option('--file <path>');
   mediaUpload.option('--url <https>');
-  mediaUpload.action(wrap((opts) => handleMediaUpload(ctx, mediaUpload, opts)));
+  bindCommandAction(mediaUpload, ctx, handleMediaUpload);
   const mediaGet = applyCommon(media.command('get'), ctx, 'media');
   mediaGet.option('--id <id>');
-  mediaGet.action(wrap((opts) => handleMediaGet(ctx, mediaGet, opts)));
+  bindCommandAction(mediaGet, ctx, handleMediaGet);
   const mediaDelete = applyCommon(media.command('delete'), ctx, 'media');
   mediaDelete.option('--id <id>');
-  mediaDelete.action(wrap((opts) => handleMediaDelete(ctx, mediaDelete, opts)));
+  bindCommandAction(mediaDelete, ctx, handleMediaDelete);
 
   const group = applyCommon(program.command('group'), ctx, 'group');
   group.action(wrap(() => missingSubcommand(ctx, 'group')));
@@ -452,158 +407,131 @@ export function createProgram(ctx: CliContext): Command {
   groupList.option('--limit <n>');
   groupList.option('--before <cursor>');
   groupList.option('--after <cursor>');
-  groupList.action(wrap((opts) => handleGroupList(ctx, groupList, opts)));
+  bindCommandAction(groupList, ctx, handleGroupList);
   const groupCreate = applyCommon(group.command('create'), ctx, 'group');
   groupCreate.option('--name <subject>');
   groupCreate.option('--description <text>');
-  groupCreate.action(wrap((opts) => handleGroupCreate(ctx, groupCreate, opts)));
+  bindCommandAction(groupCreate, ctx, handleGroupCreate);
   const groupGet = applyCommon(group.command('get'), ctx, 'group');
   groupGet.argument('[group-id]');
   groupGet.option('--fields <csv>');
-  groupGet.action(wrap((id: string | undefined, opts) => handleGroupGet(ctx, groupGet, id, opts)));
+  groupGet.action(
+    wrap((id: string | undefined, opts: Parameters<typeof handleGroupGet>[3]) =>
+      handleGroupGet(ctx, groupGet, id, opts),
+    ),
+  );
   const groupUpdate = applyCommon(group.command('update'), ctx, 'group');
   groupUpdate.argument('[group-id]');
   groupUpdate.option('--subject <text>');
   groupUpdate.option('--description <text>');
   groupUpdate.option('--picture <url>');
-  groupUpdate.action(wrap((id: string | undefined, opts) => handleGroupUpdate(ctx, groupUpdate, id, opts)));
+  groupUpdate.action(
+    wrap((id: string | undefined, opts: Parameters<typeof handleGroupUpdate>[3]) =>
+      handleGroupUpdate(ctx, groupUpdate, id, opts),
+    ),
+  );
   applyCommon(group.command('delete'), ctx, 'group')
     .argument('[group-id]')
-    .action(wrap(function (this: Command, id: string | undefined) {
-      return handleGroupDelete(ctx, this, id);
-    }));
+    .action(
+      wrap(function (this: Command, id: string | undefined) {
+        return handleGroupDelete(ctx, this, id);
+      }),
+    );
   const invite = applyCommon(group.command('invite-link'), ctx, 'group');
   invite.argument('[group-id]');
-  invite.action(wrap(function (this: Command, id: string | undefined) {
-    return handleGroupInviteLink(ctx, this, id, false);
-  }));
+  invite.action(
+    wrap(function (this: Command, id: string | undefined) {
+      return handleGroupInviteLink(ctx, this, id, false);
+    }),
+  );
   applyCommon(invite.command('reset'), ctx, 'group')
     .argument('[group-id]')
-    .action(wrap(function (this: Command, id: string | undefined) {
-      return handleGroupInviteLink(ctx, this, id, true);
-    }));
+    .action(
+      wrap(function (this: Command, id: string | undefined) {
+        return handleGroupInviteLink(ctx, this, id, true);
+      }),
+    );
 
-  const flow = applyCommon(program.command('flow'), ctx, 'flow');
-  flow.action(wrap(() => missingSubcommand(ctx, 'flow')));
-  const flowWaba = (c: Command) => c.option('--waba-account-id <id>');
-  const flowList = applyCommon(flow.command('list'), ctx, 'flow');
-  flowWaba(flowList);
-  flowList.option('--fields <csv>');
-  flowList.action(wrap((opts) => handleFlowList(ctx, flowList, opts)));
-  const flowCreate = applyCommon(flow.command('create'), ctx, 'flow');
-  flowWaba(flowCreate);
-  flowCreate.option('--name <name>');
-  flowCreate.option('--category <ENUM>', 'repeatable', collect, [] as string[]);
-  flowCreate.option('--endpoint <uri>');
-  flowCreate.option('--publish');
-  flowCreate.option('--json-file <path>');
-  flowCreate.action(wrap((opts) => handleFlowCreate(ctx, flowCreate, opts)));
-  const flowGet = applyCommon(flow.command('get'), ctx, 'flow');
-  flowWaba(flowGet);
-  flowGet.argument('[flow-id]');
-  flowGet.action(wrap((id: string | undefined, opts) => handleFlowIdOp(ctx, flowGet, id, 'get', opts)));
-  const flowDelete = applyCommon(flow.command('delete'), ctx, 'flow');
-  flowWaba(flowDelete);
-  flowDelete.argument('[flow-id]');
-  flowDelete.action(wrap((id: string | undefined, opts) => handleFlowIdOp(ctx, flowDelete, id, 'delete', opts)));
-  const flowPreview = applyCommon(flow.command('preview'), ctx, 'flow');
-  flowWaba(flowPreview);
-  flowPreview.argument('[flow-id]');
-  flowPreview.action(wrap((id: string | undefined, opts) => handleFlowIdOp(ctx, flowPreview, id, 'preview', opts)));
-  const flowPublish = applyCommon(flow.command('publish'), ctx, 'flow');
-  flowWaba(flowPublish);
-  flowPublish.argument('[flow-id]');
-  flowPublish.action(wrap((id: string | undefined, opts) => handleFlowIdOp(ctx, flowPublish, id, 'publish', opts)));
-  const flowDeprecate = applyCommon(flow.command('deprecate'), ctx, 'flow');
-  flowWaba(flowDeprecate);
-  flowDeprecate.argument('[flow-id]');
-  flowDeprecate.action(wrap((id: string | undefined, opts) =>
-    handleFlowIdOp(ctx, flowDeprecate, id, 'deprecate', opts),
-  ));
-  const flowMetadata = applyCommon(flow.command('metadata'), ctx, 'flow');
-  flowWaba(flowMetadata);
-  flowMetadata.argument('[flow-id]');
-  flowMetadata.option('--name <name>');
-  flowMetadata.option('--category <ENUM>', 'repeatable', collect, [] as string[]);
-  flowMetadata.option('--endpoint <uri>');
-  flowMetadata.action(wrap((id: string | undefined, opts) => handleFlowMetadata(ctx, flowMetadata, id, opts)));
-  const flowAssets = applyCommon(flow.command('assets'), ctx, 'flow');
-  flowWaba(flowAssets);
-  flowAssets.argument('[flow-id]');
-  flowAssets.option('--json-file <path>');
-  flowAssets.action(wrap((id: string | undefined, opts) => handleFlowAssets(ctx, flowAssets, id, opts)));
-  const encryption = applyCommon(flow.command('encryption'), ctx, 'flow');
-  encryption.action(wrap(function (this: Command) {
-    return handleFlowEncryption(ctx, this);
-  }));
-  const encryptionSet = applyCommon(encryption.command('set'), ctx, 'flow');
-  encryptionSet.option('--pem-file <path>');
-  encryptionSet.action(wrap((opts) => handleFlowEncryptionSet(ctx, encryptionSet, opts)));
+  registerFlowCommands(program, ctx);
 
   const webhook = applyCommon(program.command('webhook'), ctx, 'webhook');
   webhook.action(wrap(() => missingSubcommand(ctx, 'webhook')));
-  applyCommon(webhook.command('get'), ctx, 'webhook').action(wrap(function (this: Command) {
-    return handleWebhookGet(ctx, this);
-  }));
+  bindCommandAction(applyCommon(webhook.command('get'), ctx, 'webhook'), ctx, handleWebhookGet);
   const webhookSet = applyCommon(webhook.command('set'), ctx, 'webhook');
   webhookSet.option('--url <https>', 'repeatable', collect, [] as string[]);
-  webhookSet.action(wrap((opts) => handleWebhookSet(ctx, webhookSet, opts)));
-  applyCommon(webhook.command('clear'), ctx, 'webhook').action(wrap(function (this: Command) {
-    return handleWebhookClear(ctx, this);
-  }));
+  bindCommandAction(webhookSet, ctx, handleWebhookSet);
+  bindCommandAction(applyCommon(webhook.command('clear'), ctx, 'webhook'), ctx, handleWebhookClear);
 
   const user = applyCommon(program.command('user'), ctx, 'user');
   user.action(wrap(() => missingSubcommand(ctx, 'user')));
-  applyCommon(user.command('blocked'), ctx, 'user').action(wrap(function (this: Command) {
-    return handleUserBlocked(ctx, this);
-  }));
+  bindCommandAction(applyCommon(user.command('blocked'), ctx, 'user'), ctx, handleUserBlocked);
   const userBlock = applyCommon(user.command('block'), ctx, 'user');
   userBlock.option('--to <phone>');
-  userBlock.action(wrap((opts) => handleUserBlock(ctx, userBlock, opts, 'block')));
+  userBlock.action(
+    wrap((opts: Parameters<typeof handleUserBlock>[2]) =>
+      handleUserBlock(ctx, userBlock, opts, 'block'),
+    ),
+  );
   const userUnblock = applyCommon(user.command('unblock'), ctx, 'user');
   userUnblock.option('--to <phone>');
-  userUnblock.action(wrap((opts) => handleUserBlock(ctx, userUnblock, opts, 'unblock')));
+  userUnblock.action(
+    wrap((opts: Parameters<typeof handleUserBlock>[2]) =>
+      handleUserBlock(ctx, userUnblock, opts, 'unblock'),
+    ),
+  );
 
   const catalog = applyCommon(program.command('catalog'), ctx, 'catalog');
   catalog.action(wrap(() => missingSubcommand(ctx, 'catalog')));
-  applyCommon(catalog.command('get'), ctx, 'catalog').action(wrap(function (this: Command) {
-    return handleCatalogGet(ctx, this);
-  }));
+  bindCommandAction(applyCommon(catalog.command('get'), ctx, 'catalog'), ctx, handleCatalogGet);
   const catalogSet = applyCommon(catalog.command('set'), ctx, 'catalog');
   catalogSet.option('--cart');
   catalogSet.option('--no-cart');
   catalogSet.option('--visible');
   catalogSet.option('--no-visible');
-  catalogSet.action(wrap((opts) => handleCatalogSet(ctx, catalogSet, opts)));
+  bindCommandAction(catalogSet, ctx, handleCatalogSet);
 
   const call = applyCommon(program.command('call'), ctx, 'call');
   call.action(wrap(() => missingSubcommand(ctx, 'call')));
   const callSettings = applyCommon(call.command('settings'), ctx, 'call');
-  callSettings.action(wrap(function (this: Command) {
-    return handleCallSettings(ctx, this);
-  }));
+  bindCommandAction(callSettings, ctx, handleCallSettings);
   const callSettingsSet = applyCommon(callSettings.command('set'), ctx, 'call');
   callSettingsSet.option('--from-file <path>');
-  callSettingsSet.action(wrap((opts) => handleCallSettingsSet(ctx, callSettingsSet, opts)));
+  bindCommandAction(callSettingsSet, ctx, handleCallSettingsSet);
   const callConnect = applyCommon(call.command('connect'), ctx, 'call');
   callConnect.option('--to <phone>');
   callConnect.option('--sdp-file <path>');
   callConnect.option('--callback-data <str>');
-  callConnect.action(wrap((opts) => handleCallConnect(ctx, callConnect, opts)));
+  bindCommandAction(callConnect, ctx, handleCallConnect);
   const callPre = applyCommon(call.command('pre-accept'), ctx, 'call');
   callPre.option('--call-id <id>');
   callPre.option('--sdp-file <path>');
-  callPre.action(wrap((opts) => handleCallControl(ctx, callPre, 'pre_accept', opts)));
+  callPre.action(
+    wrap((opts: Parameters<typeof handleCallControl>[3]) =>
+      handleCallControl(ctx, callPre, 'pre_accept', opts),
+    ),
+  );
   const callAccept = applyCommon(call.command('accept'), ctx, 'call');
   callAccept.option('--call-id <id>');
   callAccept.option('--sdp-file <path>');
-  callAccept.action(wrap((opts) => handleCallControl(ctx, callAccept, 'accept', opts)));
+  callAccept.action(
+    wrap((opts: Parameters<typeof handleCallControl>[3]) =>
+      handleCallControl(ctx, callAccept, 'accept', opts),
+    ),
+  );
   const callReject = applyCommon(call.command('reject'), ctx, 'call');
   callReject.option('--call-id <id>');
-  callReject.action(wrap((opts) => handleCallControl(ctx, callReject, 'reject', opts)));
+  callReject.action(
+    wrap((opts: Parameters<typeof handleCallControl>[3]) =>
+      handleCallControl(ctx, callReject, 'reject', opts),
+    ),
+  );
   const callHangup = applyCommon(call.command('hangup'), ctx, 'call');
   callHangup.option('--call-id <id>');
-  callHangup.action(wrap((opts) => handleCallControl(ctx, callHangup, 'terminate', opts)));
+  callHangup.action(
+    wrap((opts: Parameters<typeof handleCallControl>[3]) =>
+      handleCallControl(ctx, callHangup, 'terminate', opts),
+    ),
+  );
 
   const completion = applyCommon(program.command('completion'), ctx, 'completion');
   completion.argument('[shell]');

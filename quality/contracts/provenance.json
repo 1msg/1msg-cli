@@ -1,0 +1,9 @@
+{
+  "sourceRepository": "https://github.com/1msg/1msg-api",
+  "sourceCommit": "888ee40a635ab19dbff4c101b8d4329790c7254f",
+  "producer": "npm run bundle:public for openapi.yaml; docs/CLI.md read from the same source commit",
+  "sha256": {
+    "openapi.yaml": "b26aa068f67c892144f2f9f2d9d0ce7a39bb12ff8ad01fd52e68f950fcc2f18c",
+    "CLI.md": "f778cf789e634df0c459a976d7f8b9b9a7d8d42ddb0f0cf299969aba542e9e73"
+  }
+}

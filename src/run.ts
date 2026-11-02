@@ -1,13 +1,11 @@
 import { CommanderError } from 'commander';
+
 import { createDefaultContext, type CliContext } from './context';
 import { CliExit, EXIT_OK, normalizeThrown } from './errors';
 import { emitError } from './execute';
 import { createProgram, translateCommanderError } from './program';
 
-export async function runCli(
-  argv: string[],
-  context: Partial<CliContext> = {},
-): Promise<number> {
+export async function runCli(argv: string[], context: Partial<CliContext> = {}): Promise<number> {
   const ctx = createDefaultContext(context);
   const program = createProgram(ctx);
   try {
