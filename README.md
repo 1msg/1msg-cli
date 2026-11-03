@@ -64,8 +64,8 @@ npm i -g @1msg/cli
 ```bash
 git clone https://github.com/1msg/1msg-cli.git
 cd 1msg-cli
-npm install
-npm run build
+pnpm install --frozen-lockfile
+pnpm run build
 node dist/index.js --help
 ```
 
@@ -659,9 +659,9 @@ Coverage is asserted in this standalone package using the public contract pinned
 
 | Script               | Purpose                                                                     |
 | -------------------- | --------------------------------------------------------------------------- |
-| `npm run build`      | Compile TypeScript → `dist/`                                                |
-| `npm test`           | Jest unit tests (`--help` snapshots, precedence, SDK-only architecture)     |
-| `npm start`          | Run `dist/index.js`                                                         |
+| `pnpm run build`     | Compile TypeScript → `dist/`                                                |
+| `pnpm test`          | Jest unit tests (`--help` snapshots, precedence, SDK-only architecture)     |
+| `pnpm start`         | Run `dist/index.js`                                                         |
 | `npm pack --dry-run` | What npm would publish (`dist/`, this README, `ARCHITECTURE.md`, `LICENSE`) |
 
 CI (`.github/workflows/ci.yml`): install, build, test, smoke `--help` / `version`, `npm pack --dry-run`.

@@ -7,3 +7,7 @@ quality/reports
 # Byte-pinned producer inputs; integrity is checked by the contract tests.
 quality/contracts/openapi.yaml
 quality/contracts/CLI.md
+
+# Package-manager generated data; pnpm frozen installation validates both locks.
+/pnpm-lock.yaml
+/quality/tooling/pnpm-lock.yaml
