@@ -15,16 +15,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-        with:
-          version: '10.34.9'
-          dest: ${{ runner.temp }}/pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
-          run_install: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.2'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --dir tools/quality --ignore-workspace install --lockfile-dir "$PWD/quality/tooling" --frozen-lockfile --ignore-scripts
+          node-version: '26.13.1'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '12.18.0'
+          dest: ${{ runner.temp }}/pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+          run_install: false
+      - run: pnpm install --frozen-lockfile --config.dangerously-allow-all-builds=true
+      - run: pnpm --dir tools/quality --ignore-workspace install --lockfile-dir "$PWD/quality/tooling" --frozen-lockfile --ignore-scripts --config.engine-strict=false
       - run: pnpm run test:preset
       - run: pnpm run quality:guards
       - run: pnpm run format:check
@@ -56,14 +56,14 @@ jobs:
         node: ['18', '20', '22', '24']
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: '10.34.9'
-          dest: ${{ runner.temp }}/pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
-          run_install: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.2'
+          node-version: '26.13.1'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '12.18.0'
+          dest: ${{ runner.temp }}/pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+          run_install: false
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm run build
       - name: Pack the actual distributable

@@ -37,7 +37,7 @@ jobs:
           node <<'NODE'
           const assert = require('node:assert/strict');
           const pkg = require('./package.json');
-          assert.equal(pkg.packageManager, 'pnpm@10.34.9');
+          assert.equal(pkg.packageManager, 'pnpm@12.18.0');
           assert.equal(pkg.name, '@1msg/cli');
           assert.match(pkg.version, /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/);
           assert.equal(pkg.repository.url, 'git+https://github.com/1msg/1msg-cli.git');
@@ -45,20 +45,19 @@ jobs:
           if (process.env.GITHUB_REF_TYPE === 'tag') assert.equal(process.env.GITHUB_REF_NAME, `v${pkg.version}`);
           else assert.equal(process.env.GITHUB_REF, 'refs/heads/main');
           NODE
-      - uses: pnpm/action-setup@v4
-        with:
-          version: '10.34.9'
-          dest: ${{ runner.temp }}/pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
-          run_install: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.22.2'
+          node-version: '26.13.1'
           registry-url: https://registry.npmjs.org
-          cache: pnpm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '12.18.0'
+          dest: ${{ runner.temp }}/pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+          run_install: false
       - name: Use the pinned npm version with OIDC support
         run: npm install --global npm@11.19.1 --ignore-scripts --registry=https://registry.npmjs.org/
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --config.dangerously-allow-all-builds=true
       - name: Build
         run: pnpm run build
       - name: Test

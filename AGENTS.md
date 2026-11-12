@@ -1,6 +1,6 @@
 # Quality and ownership
 
-Profile A, Node 24.22.2. SDK/tooling maintainers own this repository. The public package entrypoints are defined in package.json; framework registration and executable consumers must remain intact. Imports must be acyclic at runtime, production cannot import tests, and dependency boundaries are enforced in `.dependency-cruiser.cjs`. `quality.config.mjs` is the source inventory and exact generated-path declaration.
+Profile A, Node 26.13.1. SDK/tooling maintainers own this repository. The public package entrypoints are defined in package.json; framework registration and executable consumers must remain intact. Imports must be acyclic at runtime, production cannot import tests, and dependency boundaries are enforced in `.dependency-cruiser.cjs`. `quality.config.mjs` is the source inventory and exact generated-path declaration.
 
 Configuration belongs in the existing config/bootstrap adapters; pure conversion/validation helpers must not gain transport or environment reads. SDK and HTTP calls belong in the existing transport/client adapters. Keep complete scenarios readable at their application entrypoints; avoid pass-through facade layers. Comments on new/changed functions describe purpose, inputs/results, invariants and relevant failure/resource ownership. Check comments against behavior rather than repeating the function name.
 
