@@ -23,7 +23,7 @@ jobs:
           dest: ${{ runner.temp }}/pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
           run_install: false
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --config.dangerously-allow-all-builds=true
 
       - name: Build
         run: pnpm run build

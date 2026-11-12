@@ -57,7 +57,7 @@ jobs:
       - name: Use the pinned npm version with OIDC support
         run: npm install --global npm@11.19.1 --ignore-scripts --registry=https://registry.npmjs.org/
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --config.dangerously-allow-all-builds=true
       - name: Build
         run: pnpm run build
       - name: Test

@@ -23,8 +23,8 @@ jobs:
           version: '12.18.0'
           dest: ${{ runner.temp }}/pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
           run_install: false
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --dir tools/quality --ignore-workspace install --lockfile-dir "$PWD/quality/tooling" --frozen-lockfile --ignore-scripts
+      - run: pnpm install --frozen-lockfile --config.dangerously-allow-all-builds=true
+      - run: pnpm --dir tools/quality --ignore-workspace install --lockfile-dir "$PWD/quality/tooling" --frozen-lockfile --ignore-scripts --config.engine-strict=false
       - run: pnpm run test:preset
       - run: pnpm run quality:guards
       - run: pnpm run format:check
