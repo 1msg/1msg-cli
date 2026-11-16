@@ -6,7 +6,8 @@
     "exactOptionalPropertyTypes": true,
     "noEmitOnError": true,
     "rootDir": ".",
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "types": ["node", "jest"]
   },
   "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
   "exclude": ["**/node_modules/**", "**/dist/**", "tools/quality/**", "quality/reports/**"]
