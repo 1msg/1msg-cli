@@ -143,10 +143,10 @@ export function makeCtx(opts?: {
       const value = files.get(String(p));
       if (value === undefined) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
       return value as string;
-    }) as typeof fs.readFileSync,
+    }) as unknown as typeof fs.readFileSync,
     writeFileSync: ((p: fs.PathLike, data: string | Buffer) => {
       files.set(String(p), data);
-    }) as typeof fs.writeFileSync,
+    }) as unknown as typeof fs.writeFileSync,
     mkdirSync: (() => undefined) as typeof fs.mkdirSync,
     chmodSync: (() => undefined) as typeof fs.chmodSync,
   };

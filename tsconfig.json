@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "NodeNext",
+    "types": ["node", "jest"],
     "rootDir": "src",
     "outDir": "dist",
     "noUncheckedIndexedAccess": true,
