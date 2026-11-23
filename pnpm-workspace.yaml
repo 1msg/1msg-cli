@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - '@1msg/sdk@2.0.4'
