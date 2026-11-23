@@ -1,4 +1,4 @@
-import type { Client, ClientConfigOptions } from '@1msg/sdk';
+import type { Client, ClientConfigOptions, PlatformCaller, PlatformClientOptions } from '@1msg/sdk';
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -122,6 +122,7 @@ export function makeCtx(opts?: {
   env?: NodeJS.ProcessEnv;
   homedir?: string;
   createClient?: (options: ClientConfigOptions) => Client;
+  createPlatformClient?: (options: PlatformClientOptions) => PlatformCaller;
   files?: Record<string, string>;
 }): {
   ctx: CliContext;
@@ -161,6 +162,7 @@ export function makeCtx(opts?: {
     stdinIsTTY: false,
     fs: memFs,
     createClient: opts?.createClient ?? (() => client),
+    ...(opts?.createPlatformClient ? { createPlatformClient: opts.createPlatformClient } : {}),
     readStdin: async () => '',
     prompt: {
       question: async () => '',

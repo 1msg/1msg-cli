@@ -1,6 +1,6 @@
 {
   "name": "@1msg/cli",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Command-line client for the 1msg WhatsApp Business API",
   "license": "MIT",
   "repository": {
@@ -50,7 +50,7 @@
     "hooks:install": "node tools/quality/node_modules/husky/bin.js"
   },
   "dependencies": {
-    "@1msg/sdk": "^2.0.2",
+    "@1msg/sdk": "^2.0.4",
     "commander": "^13.1.0",
     "yaml": "^2.9.1"
   },

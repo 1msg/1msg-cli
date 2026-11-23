@@ -123,12 +123,14 @@ Tokens are never printed in tables, logs, or `--json`.
 
 ### Environment
 
-| Variable              | Description                                            |
-| --------------------- | ------------------------------------------------------ |
-| `ONE_MSG_CHANNEL`     | Same as `--channel` (config **name**, not instance id) |
-| `ONE_MSG_BASE_URL`    | `https://api.1msg.io` or `https://sandbox.1msg.io`     |
-| `ONE_MSG_INSTANCE_ID` | Channel instance id                                    |
-| `ONE_MSG_TOKEN`       | Channel API token                                      |
+| Variable               | Description                                            |
+| ---------------------- | ------------------------------------------------------ |
+| `ONE_MSG_CHANNEL`      | Same as `--channel` (config **name**, not instance id) |
+| `ONE_MSG_BASE_URL`     | `https://api.1msg.io` or `https://sandbox.1msg.io`     |
+| `ONE_MSG_INSTANCE_ID`  | Channel instance id                                    |
+| `ONE_MSG_TOKEN`        | Channel API token                                      |
+| `ONE_MSG_PLATFORM_KEY` | Platform API key for `inbox` and `campaigns`           |
+| `ONE_MSG_PLATFORM_URL` | Platform origin (default `https://api.1msg.io`)        |
 
 Deprecated aliases match MCP: `CHAT_API_BASE_URL`, `CHAT_API_TOKEN`, `CHAT_API_INSTANCE_ID`, `CHAT_API_KEY`, `TOKEN`, `INSTANCE_ID`. Prefer `ONE_MSG_*`.
 

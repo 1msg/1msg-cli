@@ -1,4 +1,11 @@
-import { createClient, type Client, type ClientConfigOptions } from '@1msg/sdk';
+import {
+  createClient,
+  createPlatformClient,
+  type Client,
+  type ClientConfigOptions,
+  type PlatformCaller,
+  type PlatformClientOptions,
+} from '@1msg/sdk';
 import fs from 'node:fs';
 import os from 'node:os';
 import readline from 'node:readline/promises';
@@ -22,6 +29,7 @@ export interface CliContext {
   stdin: NodeJS.ReadableStream;
   stdinIsTTY: boolean;
   createClient: (options: ClientConfigOptions) => Client;
+  createPlatformClient: (options: PlatformClientOptions) => PlatformCaller;
   now: () => Date;
   fs: CliFs;
   prompt: {
@@ -142,6 +150,7 @@ async function hiddenQuestion(
   }
 }
 
+/** Build the process context, including the platform client factory. */
 export function createDefaultContext(overrides: Partial<CliContext> = {}): CliContext {
   const stdin = overrides.stdin ?? process.stdin;
   const stdout = overrides.stdout ?? process.stdout;
@@ -157,6 +166,7 @@ export function createDefaultContext(overrides: Partial<CliContext> = {}): CliCo
     stdin,
     stdinIsTTY: overrides.stdinIsTTY ?? Boolean((stdin as NodeJS.ReadStream).isTTY),
     createClient: overrides.createClient ?? createClient,
+    createPlatformClient: overrides.createPlatformClient ?? createPlatformClient,
     now: overrides.now ?? (() => new Date()),
     fs: overrides.fs ?? {
       readFileSync: fs.readFileSync,

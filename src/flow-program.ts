@@ -5,6 +5,7 @@ import type { CliContext } from './context';
 import { applyCommon, bindCommandAction, wrap } from './command-binding';
 import { collect } from './io';
 import { missingSubcommand } from './local';
+import { registerPlatform } from './register-platform';
 import {
   handleFlowAssets,
   handleFlowCreate,
@@ -72,4 +73,5 @@ export function registerFlowCommands(program: Command, ctx: CliContext): void {
   const encryptionSet = applyCommon(encryption.command('set'), ctx, 'flow');
   encryptionSet.option('--pem-file <path>');
   bindCommandAction(encryptionSet, ctx, handleFlowEncryptionSet);
+  registerPlatform(program, ctx);
 }

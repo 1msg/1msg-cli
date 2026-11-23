@@ -167,8 +167,8 @@ importers:
   .:
     dependencies:
       '@1msg/sdk':
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: ^2.0.4
+        version: 2.0.4
       commander:
         specifier: ^13.1.0
         version: 13.1.0
@@ -194,8 +194,8 @@ importers:
 
 packages:
 
-  '@1msg/sdk@2.0.2':
-    resolution: {integrity: sha512-tplhNWQ9HUn0UkkOJ2GsZIFg5LhLfyMHyI50GDm6MKFslPUDA0VG+0TLRAHQFJoWEcr+Y+lexIlD+9yAZYg9qA==}
+  '@1msg/sdk@2.0.4':
+    resolution: {integrity: sha512-O+mMzszS0Z7R8AbV2TZ/Nev95fS/OZHaLT+NrPbdYtPVhGbFOW8qlGXjSbqi9MnwPn47x1kJadcjwyNjUjC6rQ==}
     engines: {node: '>=18.0.0'}
 
   '@babel/code-frame@7.29.7':
@@ -1582,7 +1582,7 @@ packages:
 
 snapshots:
 
-  '@1msg/sdk@2.0.2': {}
+  '@1msg/sdk@2.0.4': {}
 
   '@babel/code-frame@7.29.7':
     dependencies:

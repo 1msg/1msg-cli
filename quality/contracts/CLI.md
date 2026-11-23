@@ -2,13 +2,13 @@
 
 Third client for the public 1msg API, after [`@1msg/sdk`](./SDK.md) and [`@1msg/mcp`](./MCP.md). **The product is the full public API, not an MVP.** `--help` below is the acceptance artifact: every public `operationId` except `deleteMediaLegacy` has a command. Nothing prints `not implemented yet`.
 
-| | |
-|--|--|
-| **Binary** | `1msg` |
-| **npm** | [`@1msg/cli`](https://www.npmjs.com/package/@1msg/cli) |
-| **HTTP** | `@1msg/sdk` only — same invariant as MCP |
-| **Coverage** | 61 of 62 public operations (legacy `deleteMediaLegacy` is not exposed) |
-| **Hosts** | `https://api.1msg.io` (live) · `https://sandbox.1msg.io` (test) |
+|                       |                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| **Binary**            | `1msg`                                                                                |
+| **npm**               | [`@1msg/cli`](https://www.npmjs.com/package/@1msg/cli)                                |
+| **HTTP**              | `@1msg/sdk` only — same invariant as MCP                                              |
+| **Coverage**          | 61 of 62 public operations (legacy `deleteMediaLegacy` is not exposed)                |
+| **Hosts**             | `https://api.1msg.io` (live) · `https://sandbox.1msg.io` (test)                       |
 | **Distribution repo** | [`1msg/1msg-cli`](https://github.com/1msg/1msg-cli) (public; preferred for npx/clone) |
 
 > **Distribution:** For `npx @1msg/cli` and clone, use [`1msg/1msg-cli`](https://github.com/1msg/1msg-cli). This monorepo package (`packages/cli`) remains the implementation home. Commands are hand-mapped, not generated from OpenAPI.
@@ -47,6 +47,8 @@ COMMANDS
   user          Block, unblock, and list blocked users
   catalog       Catalog and cart commerce settings
   call          WhatsApp Calling API (beta, signaling only)
+  inbox         Platform Inbox API (API key, not the channel token)
+  campaigns     Platform Campaigns API (API key, not the channel token)
   completion    Print shell completion script (bash | zsh | powershell)
   version       Print CLI and SDK versions
 
@@ -78,6 +80,8 @@ ENVIRONMENT
   ONE_MSG_BASE_URL       https://api.1msg.io or https://sandbox.1msg.io
   ONE_MSG_INSTANCE_ID    Channel instance id
   ONE_MSG_TOKEN          Channel API token
+  ONE_MSG_PLATFORM_KEY   Platform API key for inbox and campaigns
+  ONE_MSG_PLATFORM_URL   Platform origin (default https://api.1msg.io)
 
   Deprecated aliases (same as MCP): CHAT_API_BASE_URL, CHAT_API_TOKEN,
   CHAT_API_INSTANCE_ID, CHAT_API_KEY, TOKEN, INSTANCE_ID.
@@ -105,18 +109,18 @@ Exactly one of `--to` or `--chat-id`. Exception: `message payment` is `--to` onl
 Default output (no `--json`) is a table. Column names are stable. Extra API
 fields are omitted from the table and appear only with `--json`.
 
-| Command | Columns | Notes |
-|---|---|---|
-| `channel list` | `default`, `name`, `instance_id`, `base_url` | Local config. `default` is `*` or empty. Never `token`. |
-| `message list` | `time`, `chat_id`, `from`, `type`, `id`, `body` | `body` truncated to 60 chars. If API returns `notice` and no rows, print the notice and exit 0. |
-| `template list` | `name`, `status`, `language`, `category`, `id` | From normalized `{total, templates[]}`. Footer line: `total N`. |
-| `group list` | `id`, `subject` | WABA group id without `@g.us` in `id`. |
-| `flow list` | `id`, `name`, `status`, `categories` | `categories` joined with comma. HTTP 501: print API error. |
-| `user blocked` | `phone` | First present of `phone`, `wa_id`, `id`. |
-| `catalog get` | `id`, `cart`, `visible` | `cart`/`visible` are `true`/`false` from `is_cart_enabled` / `is_catalog_visible`. |
-| `channel settings` | key-value, one setting per line | Not a multi-row table. |
-| `me` | key-value (`about`, `phone`, `email`, …) | Not a multi-row table. |
-| `status` | key-value (`status`, `accountStatus`, `mm_lite_available`) | Not a multi-row table. |
+| Command            | Columns                                                    | Notes                                                                                           |
+| ------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `channel list`     | `default`, `name`, `instance_id`, `base_url`               | Local config. `default` is `*` or empty. Never `token`.                                         |
+| `message list`     | `time`, `chat_id`, `from`, `type`, `id`, `body`            | `body` truncated to 60 chars. If API returns `notice` and no rows, print the notice and exit 0. |
+| `template list`    | `name`, `status`, `language`, `category`, `id`             | From normalized `{total, templates[]}`. Footer line: `total N`.                                 |
+| `group list`       | `id`, `subject`                                            | WABA group id without `@g.us` in `id`.                                                          |
+| `flow list`        | `id`, `name`, `status`, `categories`                       | `categories` joined with comma. HTTP 501: print API error.                                      |
+| `user blocked`     | `phone`                                                    | First present of `phone`, `wa_id`, `id`.                                                        |
+| `catalog get`      | `id`, `cart`, `visible`                                    | `cart`/`visible` are `true`/`false` from `is_cart_enabled` / `is_catalog_visible`.              |
+| `channel settings` | key-value, one setting per line                            | Not a multi-row table.                                                                          |
+| `me`               | key-value (`about`, `phone`, `email`, …)                   | Not a multi-row table.                                                                          |
+| `status`           | key-value (`status`, `accountStatus`, `mm_lite_available`) | Not a multi-row table.                                                                          |
 
 Empty list: print `No rows.` to stderr and exit 0.
 
@@ -1240,7 +1244,7 @@ channels:
   acme-test:
     base_url: https://sandbox.1msg.io
     instance_id: ODI371267301
-    token: "…"   # optional; file mode 0600
+    token: '…' # optional; file mode 0600
 ```
 
 ### Precedence
@@ -1308,70 +1312,71 @@ Distribution: implementation home `1msg-api/packages/cli`; public repo [`1msg/1m
 
 ## Full map (public `operationId` → command)
 
-| operationId | CLI |
-|---|---|
-| `sendMessage` | `message send --text` / `send --text` |
-| `sendFile` | `message send --file` / `--media-id` |
-| `createUploadMedia` | `media upload` |
-| `listMessages` | `message list` |
-| `createReadMessage` | `message read` |
-| `sendTemplate` | `template send` |
-| `listTemplates` | `template list` |
-| `addTemplate` | `template add` |
-| `removeTemplate` | `template remove` |
-| `getStatus` | `status` / `channel status` |
-| `getMe` | `me` |
-| `updateMe` | `me update` |
-| `retrieveMedia` | `media get` |
-| `deleteMedia` | `media delete` |
-| `sendReaction` | `message react` |
-| `sendLocation` | `message location` |
-| `sendLocationRequest` | `message location-request` |
-| `sendContact` | `message contact` |
-| `sendButton` | `message buttons` |
-| `sendList` | `message menu` |
-| `sendCarousel` | `message carousel` |
-| `sendProduct` | `message product` |
-| `sendCtaUrl` | `message cta` |
-| `sendAddressMessage` | `message address` |
-| `sendOrderDetails` | `message order` |
-| `sendPaymentRequest` | `message payment` |
-| `sendSticker` | `message sticker` |
-| `sendFlow` | `message flow` |
-| `getWebhook` | `webhook get` |
-| `setWebhook` | `webhook set` |
-| `listSettings` | `channel settings` |
-| `createSettings` | `channel settings set` / `webhook clear` |
-| `getMmLiteStatus` | `channel mm-lite` |
-| `getCommerce` | `catalog get` |
-| `createCommerce` | `catalog set` |
-| `getConversationalAutomation` | `channel automation` |
-| `setConversationalAutomation` | `channel automation set` |
-| `blockUser` | `user block` |
-| `unblockUser` | `user unblock` |
-| `listBlockedUsers` | `user blocked` |
-| `createGroups` | `group create` |
-| `listGroups` | `group list` |
-| `getGroupsGroupId` | `group get` |
-| `createGroupsGroupId` | `group update` |
-| `deleteGroupsGroupId` | `group delete` |
-| `getGroupsGroupIdInvitelink` | `group invite-link` |
-| `createGroupsGroupIdInvitelink` | `group invite-link reset` |
-| `createFlows` | `flow create` |
-| `listFlows` | `flow list` |
-| `getFlowsFlowId` | `flow get` |
-| `deleteFlowsFlowId` | `flow delete` |
-| `patchFlowsFlowIdMetadata` | `flow metadata` |
-| `patchFlowsFlowIdAssets` | `flow assets` |
-| `getFlowsFlowIdPreview` | `flow preview` |
-| `createFlowsFlowIdPublish` | `flow publish` |
-| `createFlowsFlowIdDeprecate` | `flow deprecate` |
-| `getCallingSettings` | `call settings` |
-| `updateCallingSettings` | `call settings set` |
-| `initiateCall` | `call connect` / `pre-accept` / `accept` / `reject` / `hangup` |
-| `getWhatsappBusinessEncryption` | `flow encryption` |
-| `setWhatsappBusinessEncryption` | `flow encryption set` |
-| `deleteMediaLegacy` | not exposed (`media delete` uses `DELETE /media/{id}`) |
+| operationId                     | CLI                                                            |
+| ------------------------------- | -------------------------------------------------------------- |
+| `sendMessage`                   | `message send --text` / `send --text`                          |
+| `sendFile`                      | `message send --file` / `--media-id`                           |
+| `createUploadMedia`             | `media upload`                                                 |
+| `listMessages`                  | `message list`                                                 |
+| `createReadMessage`             | `message read`                                                 |
+| `sendTemplate`                  | `template send`                                                |
+| `listTemplates`                 | `template list`                                                |
+| `addTemplate`                   | `template add`                                                 |
+| `removeTemplate`                | `template remove`                                              |
+| `getStatus`                     | `status` / `channel status`                                    |
+| `getMe`                         | `me`                                                           |
+| `updateMe`                      | `me update`                                                    |
+| `retrieveMedia`                 | `media get`                                                    |
+| `deleteMedia`                   | `media delete`                                                 |
+| `sendReaction`                  | `message react`                                                |
+| `sendLocation`                  | `message location`                                             |
+| `sendLocationRequest`           | `message location-request`                                     |
+| `sendContactInfo`               | `message contact-info`                                         |
+| `sendContact`                   | `message contact`                                              |
+| `sendButton`                    | `message buttons`                                              |
+| `sendList`                      | `message menu`                                                 |
+| `sendCarousel`                  | `message carousel`                                             |
+| `sendProduct`                   | `message product`                                              |
+| `sendCtaUrl`                    | `message cta`                                                  |
+| `sendAddressMessage`            | `message address`                                              |
+| `sendOrderDetails`              | `message order`                                                |
+| `sendPaymentRequest`            | `message payment`                                              |
+| `sendSticker`                   | `message sticker`                                              |
+| `sendFlow`                      | `message flow`                                                 |
+| `getWebhook`                    | `webhook get`                                                  |
+| `setWebhook`                    | `webhook set`                                                  |
+| `listSettings`                  | `channel settings`                                             |
+| `createSettings`                | `channel settings set` / `webhook clear`                       |
+| `getMmLiteStatus`               | `channel mm-lite`                                              |
+| `getCommerce`                   | `catalog get`                                                  |
+| `createCommerce`                | `catalog set`                                                  |
+| `getConversationalAutomation`   | `channel automation`                                           |
+| `setConversationalAutomation`   | `channel automation set`                                       |
+| `blockUser`                     | `user block`                                                   |
+| `unblockUser`                   | `user unblock`                                                 |
+| `listBlockedUsers`              | `user blocked`                                                 |
+| `createGroups`                  | `group create`                                                 |
+| `listGroups`                    | `group list`                                                   |
+| `getGroupsGroupId`              | `group get`                                                    |
+| `createGroupsGroupId`           | `group update`                                                 |
+| `deleteGroupsGroupId`           | `group delete`                                                 |
+| `getGroupsGroupIdInvitelink`    | `group invite-link`                                            |
+| `createGroupsGroupIdInvitelink` | `group invite-link reset`                                      |
+| `createFlows`                   | `flow create`                                                  |
+| `listFlows`                     | `flow list`                                                    |
+| `getFlowsFlowId`                | `flow get`                                                     |
+| `deleteFlowsFlowId`             | `flow delete`                                                  |
+| `patchFlowsFlowIdMetadata`      | `flow metadata`                                                |
+| `patchFlowsFlowIdAssets`        | `flow assets`                                                  |
+| `getFlowsFlowIdPreview`         | `flow preview`                                                 |
+| `createFlowsFlowIdPublish`      | `flow publish`                                                 |
+| `createFlowsFlowIdDeprecate`    | `flow deprecate`                                               |
+| `getCallingSettings`            | `call settings`                                                |
+| `updateCallingSettings`         | `call settings set`                                            |
+| `initiateCall`                  | `call connect` / `pre-accept` / `accept` / `reject` / `hangup` |
+| `getWhatsappBusinessEncryption` | `flow encryption`                                              |
+| `setWhatsappBusinessEncryption` | `flow encryption set`                                          |
+| `deleteMediaLegacy`             | not exposed (`media delete` uses `DELETE /media/{id}`)         |
 
 Local-only (no `operationId`): `init`, `channel list|use|add|remove|current`, `completion`, `version`.
 
@@ -1401,25 +1406,924 @@ Do not start that work under this ticket.
 
 62 `operationId`s in the bundled public spec. Counted from the spec, not from MCP.
 
-| Check | Result |
-|---|---|
-| Spec operationIds | 62 |
-| Mapped to a CLI command | 61 |
-| Intentionally hidden | 1 — `deleteMediaLegacy` (deprecated POST alias of `DELETE /media/{id}`) |
-| Unmapped leftover | 0 |
-| Root `--help` commands that are stubs | 0 |
-| Ticket examples | `message send`, `channel info`, `channel info --json`, `template list` — present |
-| `--json` | Raw API body. Exception: `channel info --json` is `{ "status": <GET /status>, "me": <GET /me> }` |
-| `channel use` | Config name first, else unique `instance_id`. `-c` stays a config name |
-| API error `code` | None. Human prints HTTP status; `--json` is the raw `{ "error" }` body |
-| `sendReaction` CLI | `--emoji` → `body`, `--message-id` → `quotedMsgId` (bundled path schema, not unused `SendReactionRequest.yaml`) |
-| `sendCarousel` CLI | Public `cards` / `params`, not unused `SendCarouselRequest.yaml` |
-| `sendPaymentRequest` | `--to` + `--region` required; no `chatId` in public schema |
-| `createReadMessage` | `--message-id` only; no chat id |
-| Local `--file` on `send` | data URI → `sendFile.body`; does not call `uploadMedia` |
-| Config vs env | Named channel values are not overridden by leftover `ONE_MSG_TOKEN` |
-| Public `send*` operations | 17/17 mapped. Root `1msg send` is text/file only; the rest are in `message --help` + `template send` |
-| `sendButton` header | text/image/video/document header only via `--from-file` |
-| Carousel outside 24h | `template send --params` with a CAROUSEL component, not `message carousel` |
+| Check                                 | Result                                                                                                          |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Spec operationIds                     | 62                                                                                                              |
+| Mapped to a CLI command               | 61                                                                                                              |
+| Intentionally hidden                  | 1 — `deleteMediaLegacy` (deprecated POST alias of `DELETE /media/{id}`)                                         |
+| Unmapped leftover                     | 0                                                                                                               |
+| Root `--help` commands that are stubs | 0                                                                                                               |
+| Ticket examples                       | `message send`, `channel info`, `channel info --json`, `template list` — present                                |
+| `--json`                              | Raw API body. Exception: `channel info --json` is `{ "status": <GET /status>, "me": <GET /me> }`                |
+| `channel use`                         | Config name first, else unique `instance_id`. `-c` stays a config name                                          |
+| API error `code`                      | None. Human prints HTTP status; `--json` is the raw `{ "error" }` body                                          |
+| `sendReaction` CLI                    | `--emoji` → `body`, `--message-id` → `quotedMsgId` (bundled path schema, not unused `SendReactionRequest.yaml`) |
+| `sendCarousel` CLI                    | Public `cards` / `params`, not unused `SendCarouselRequest.yaml`                                                |
+| `sendPaymentRequest`                  | `--to` + `--region` required; no `chatId` in public schema                                                      |
+| `createReadMessage`                   | `--message-id` only; no chat id                                                                                 |
+| Local `--file` on `send`              | data URI → `sendFile.body`; does not call `uploadMedia`                                                         |
+| Config vs env                         | Named channel values are not overridden by leftover `ONE_MSG_TOKEN`                                             |
+| Public `send*` operations             | 17/17 mapped. Root `1msg send` is text/file only; the rest are in `message --help` + `template send`            |
+| `sendButton` header                   | text/image/video/document header only via `--from-file`                                                         |
+| Carousel outside 24h                  | `template send --params` with a CAROUSEL component, not `message carousel`                                      |
 
 Ticket: [1MSG-164](https://plane.1msg.io/1msg/browse/1MSG-164/). Related: [1MSG-63](https://plane.1msg.io/1msg/browse/1MSG-63/) SDK, [1MSG-75](https://plane.1msg.io/1msg/browse/1MSG-75/) MCP.
+
+<!-- platform-help:start -->
+### `1msg campaigns --help`
+
+```
+Platform API commands under `campaigns`.
+
+USAGE
+  1msg campaigns <command>
+
+COMMANDS
+  analytics
+  complete
+  create
+  get
+  list
+  pause
+  preview
+  resume
+  schedule
+  segments
+  send
+  test
+  unschedule
+  update
+
+These commands use the platform API key, not the WhatsApp channel token.
+Set ONE_MSG_PLATFORM_KEY or pass --api-key. The default host is
+https://api.1msg.io. Override it with ONE_MSG_PLATFORM_URL or
+--platform-url.
+```
+
+### `1msg campaigns analytics --help`
+
+```
+Analytics summary.
+
+Counts for the snapshot taken at send. Rates are fractions from 0 to 1.
+
+USAGE
+  1msg campaigns analytics <campaignId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+COMMANDS
+  errors
+  recipients
+  replies
+```
+
+### `1msg campaigns analytics errors --help`
+
+```
+Errors by reason.
+
+Errors by reason
+
+USAGE
+  1msg campaigns analytics errors <campaignId>
+
+FLAGS
+      --recipients-limit <value>  Optional
+      --type <value>              Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns analytics recipients --help`
+
+```
+Recipient analytics.
+
+filter is sent, delivered, read, replied, failed, skipped, or cancelled. filter=clicked is rejected.
+
+USAGE
+  1msg campaigns analytics recipients <campaignId>
+
+FLAGS
+      --filter <value>            Optional
+      --replied <value>           Optional
+      --reply-type <value>        Optional
+      --button-id <value>         Optional
+      --reason <value>            Optional
+      --fields <value>            Optional
+      --limit <value>             Optional
+      --cursor <value>            Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns analytics replies --help`
+
+```
+Reply feed.
+
+Reply feed
+
+USAGE
+  1msg campaigns analytics replies <campaignId>
+
+FLAGS
+      --reply-type <value>        Optional
+      --button-id <value>         Optional
+      --phone <value>             Optional
+      --bsuid <value>             Optional
+      --date-from <value>         Optional
+      --date-to <value>           Optional
+      --limit <value>             Optional
+      --cursor <value>            Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns complete --help`
+
+```
+Complete a campaign.
+
+Marks a sending or paused campaign completed. No body.
+
+USAGE
+  1msg campaigns complete <campaignId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns create --help`
+
+```
+Create a campaign draft.
+
+content.mode is template or text. For a template set templateName, language, and params. For text set content.text.
+
+USAGE
+  1msg campaigns create
+
+FLAGS
+      --from-file <path>       JSON body. `-` reads stdin
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns get --help`
+
+```
+Get a campaign.
+
+dailyLimit is the channel tier. scheduledAt is the future send time, or null.
+
+USAGE
+  1msg campaigns get <campaignId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns list --help`
+
+```
+List campaigns.
+
+Newest first. Repeat channelId or pass a comma-separated list. Omit it to return every channel.
+
+USAGE
+  1msg campaigns list
+
+FLAGS
+      --channel-id <value>        Optional
+      --limit <value>             Optional
+      --cursor <value>            Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns pause --help`
+
+```
+Pause a sending campaign.
+
+Stops taking new recipients. No body.
+
+USAGE
+  1msg campaigns pause <campaignId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns preview --help`
+
+```
+Preview a campaign.
+
+Counts recipients and how many are outside the 24-hour window. Nothing is sent.
+
+USAGE
+  1msg campaigns preview <campaignId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns resume --help`
+
+```
+Resume a paused campaign.
+
+Continues the same snapshot. No body.
+
+USAGE
+  1msg campaigns resume <campaignId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns schedule --help`
+
+```
+Change the scheduled time.
+
+Only a campaign that is already scheduled can be moved.
+
+USAGE
+  1msg campaigns schedule <campaignId>
+
+FLAGS
+      --scheduled-at <value>      Required
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments --help`
+
+```
+Platform API commands under `campaigns segments`.
+
+USAGE
+  1msg campaigns segments <command>
+
+COMMANDS
+  create
+  delete
+  get
+  list
+  members
+  update
+
+These commands use the platform API key, not the WhatsApp channel token.
+Set ONE_MSG_PLATFORM_KEY or pass --api-key. The default host is
+https://api.1msg.io. Override it with ONE_MSG_PLATFORM_URL or
+--platform-url.
+```
+
+### `1msg campaigns segments create --help`
+
+```
+Create a segment.
+
+name is required, up to 200 characters. description is optional, up to 2000 characters.
+
+USAGE
+  1msg campaigns segments create
+
+FLAGS
+      --name <value>              Required
+      --description <value>       Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments delete --help`
+
+```
+Delete a segment.
+
+Deletes the segment and its members. Fails while a draft, sending, paused, or scheduled campaign still uses it.
+
+USAGE
+  1msg campaigns segments delete <segmentId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments get --help`
+
+```
+Get a segment.
+
+Get a segment
+
+USAGE
+  1msg campaigns segments get <segmentId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments list --help`
+
+```
+List segments.
+
+Newest first. limit defaults to 50, maximum 100.
+
+USAGE
+  1msg campaigns segments list
+
+FLAGS
+      --limit <value>             Optional
+      --cursor <value>            Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments members --help`
+
+```
+Platform API commands under `campaigns segments members`.
+
+USAGE
+  1msg campaigns segments members <command>
+
+COMMANDS
+  add
+  list
+  remove
+  replace
+  update
+
+These commands use the platform API key, not the WhatsApp channel token.
+Set ONE_MSG_PLATFORM_KEY or pass --api-key. The default host is
+https://api.1msg.io. Override it with ONE_MSG_PLATFORM_URL or
+--platform-url.
+```
+
+### `1msg campaigns segments members add --help`
+
+```
+Add segment members.
+
+members is a non-empty list. Each item needs name and phone or bsuid. The segment cannot exceed 500 members.
+
+USAGE
+  1msg campaigns segments members add <segmentId>
+
+FLAGS
+      --from-file <path>       JSON body. `-` reads stdin
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments members list --help`
+
+```
+List segment members.
+
+List segment members
+
+USAGE
+  1msg campaigns segments members list <segmentId>
+
+FLAGS
+      --limit <value>             Optional
+      --cursor <value>            Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments members remove --help`
+
+```
+Remove segment members.
+
+memberIds is a non-empty list. Other members stay.
+
+USAGE
+  1msg campaigns segments members remove <segmentId>
+
+FLAGS
+      --member-ids <value>        Required
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments members replace --help`
+
+```
+Replace segment members.
+
+Deletes every current member and inserts this list. The new list cannot exceed 500 members.
+
+USAGE
+  1msg campaigns segments members replace <segmentId>
+
+FLAGS
+      --from-file <path>       JSON body. `-` reads stdin
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments members update --help`
+
+```
+Update one segment member.
+
+Send only the fields that change. The member still needs a phone or a BSUID.
+
+USAGE
+  1msg campaigns segments members update <segmentId> <memberId>
+
+FLAGS
+      --name <value>              Optional
+      --phone <value>             Optional
+      --bsuid <value>             Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns segments update --help`
+
+```
+Update a segment.
+
+Send only the fields that change.
+
+USAGE
+  1msg campaigns segments update <segmentId>
+
+FLAGS
+      --name <value>              Optional
+      --description <value>       Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns send --help`
+
+```
+Send or schedule a campaign.
+
+scheduledAt is a future ISO-8601 instant with Z or a numeric offset. Omit it or send null to start now.
+
+USAGE
+  1msg campaigns send <campaignId>
+
+FLAGS
+      --scheduled-at <value>      Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns test --help`
+
+```
+Send one test.
+
+Does not change campaign status or analytics. Provide exactly one of phone or bsuid.
+
+USAGE
+  1msg campaigns test <campaignId>
+
+FLAGS
+      --phone <value>             Optional
+      --bsuid <value>             Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns unschedule --help`
+
+```
+Return a scheduled campaign to draft.
+
+Clears scheduledAt. No body.
+
+USAGE
+  1msg campaigns unschedule <campaignId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg campaigns update --help`
+
+```
+Update a draft campaign.
+
+Only a draft can be changed. Send at least one of name, channelId, segmentId, or content.
+
+USAGE
+  1msg campaigns update <campaignId>
+
+FLAGS
+      --from-file <path>       JSON body. `-` reads stdin
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox --help`
+
+```
+Platform API commands under `inbox`.
+
+USAGE
+  1msg inbox <command>
+
+COMMANDS
+  assignees
+  channels
+  contacts
+  conversations
+  webhook
+
+These commands use the platform API key, not the WhatsApp channel token.
+Set ONE_MSG_PLATFORM_KEY or pass --api-key. The default host is
+https://api.1msg.io. Override it with ONE_MSG_PLATFORM_URL or
+--platform-url.
+```
+
+### `1msg inbox assignees --help`
+
+```
+People who can be assigned on this channel.
+
+The account owner, plus operators who already have this channel. Use the returned id as userId when assigning a conversation.
+
+USAGE
+  1msg inbox assignees <channelId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox channels --help`
+
+```
+List channels visible to this key.
+
+An account key sees every channel. A user key sees only channels that user can open.
+
+USAGE
+  1msg inbox channels
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox contacts --help`
+
+```
+List inbox contacts.
+
+Read-only. Returns name, phone, bsuid, and username. Does not send messages.
+
+USAGE
+  1msg inbox contacts
+
+FLAGS
+      --status <value>            Optional
+      --assignee <value>          Optional
+      --last-message-from <value> Optional
+      --last-message-to <value>   Optional
+      --fields <value>            Optional
+      --limit <value>             Optional
+      --cursor <value>            Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations --help`
+
+```
+Platform API commands under `inbox conversations`.
+
+USAGE
+  1msg inbox conversations <command>
+
+COMMANDS
+  assign
+  block
+  counts
+  get
+  list
+  messages
+  search
+  status
+  title
+  unblock
+
+These commands use the platform API key, not the WhatsApp channel token.
+Set ONE_MSG_PLATFORM_KEY or pass --api-key. The default host is
+https://api.1msg.io. Override it with ONE_MSG_PLATFORM_URL or
+--platform-url.
+```
+
+### `1msg inbox conversations assign --help`
+
+```
+Assign, reassign, or clear the conversation assignee.
+
+userId comes from the assignee list. null clears the assignee. The same assignee is a no-op.
+
+USAGE
+  1msg inbox conversations assign <conversationId>
+
+FLAGS
+      --user-id <value>           Required
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations block --help`
+
+```
+Block the contact.
+
+No body. Blocking an already blocked contact returns 409.
+
+USAGE
+  1msg inbox conversations block <conversationId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations counts --help`
+
+```
+Conversation counts.
+
+mine_open and unassigned count only OPEN conversations. all counts every visible conversation.
+
+USAGE
+  1msg inbox conversations counts
+
+FLAGS
+      --channel-id <value>        Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations get --help`
+
+```
+One conversation.
+
+Includes the contact, assignee, and customer phone.
+
+USAGE
+  1msg inbox conversations get <conversationId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations list --help`
+
+```
+List conversations.
+
+Newest lastMessageAt first. Pass pagination.nextCursor as cursor for the next page.
+
+USAGE
+  1msg inbox conversations list
+
+FLAGS
+      --assignee-id <value>       Optional
+      --tab <value>               Optional
+      --unread <value>            Optional
+      --status <value>            Optional
+      --channel-id <value>        Optional
+      --cursor <value>            Optional
+      --limit <value>             Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations messages --help`
+
+```
+Messages in a conversation.
+
+Newest first. kind=all includes SYSTEM events. kind=messages hides them. kind=system returns only SYSTEM events.
+
+USAGE
+  1msg inbox conversations messages <conversationId>
+
+FLAGS
+      --limit <value>             Optional
+      --cursor <value>            Optional
+      --kind <value>              Optional
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations search --help`
+
+```
+Search conversations.
+
+Matches contact name, phone, and message text in one channel. channelId is required. query must be at least 3 characters.
+
+USAGE
+  1msg inbox conversations search
+
+FLAGS
+      --query <value>             Required
+      --channel-id <value>        Required
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations status --help`
+
+```
+Open or close a conversation.
+
+Send status OPEN or CLOSED. The same status again returns 409. A change writes a SYSTEM message.
+
+USAGE
+  1msg inbox conversations status <conversationId>
+
+FLAGS
+      --status <value>            Required
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations title --help`
+
+```
+Rename a conversation.
+
+Replaces the dialog title. A system message records the change.
+
+USAGE
+  1msg inbox conversations title <conversationId>
+
+FLAGS
+      --title <value>             Required
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox conversations unblock --help`
+
+```
+Unblock the contact.
+
+No body. Unblocking a contact who is not blocked returns 409.
+
+USAGE
+  1msg inbox conversations unblock <conversationId>
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox webhook --help`
+
+```
+Platform API commands under `inbox webhook`.
+
+USAGE
+  1msg inbox webhook <command>
+
+COMMANDS
+  delete
+  get
+  secret
+  set
+
+These commands use the platform API key, not the WhatsApp channel token.
+Set ONE_MSG_PLATFORM_KEY or pass --api-key. The default host is
+https://api.1msg.io. Override it with ONE_MSG_PLATFORM_URL or
+--platform-url.
+```
+
+### `1msg inbox webhook delete --help`
+
+```
+Remove the account inbox webhook.
+
+Later inbox changes are not delivered until a URL is saved again.
+
+USAGE
+  1msg inbox webhook delete
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox webhook get --help`
+
+```
+Read the account inbox webhook.
+
+One HTTPS URL per account. The owner sets it. A user key cannot. This is not the channel webhook.
+
+USAGE
+  1msg inbox webhook get
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox webhook secret --help`
+
+```
+Rotate the inbox webhook signing secret.
+
+Returns the new secret once. The previous secret stops verifying immediately. 404 when no URL is saved.
+
+USAGE
+  1msg inbox webhook secret
+
+FLAGS
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+
+### `1msg inbox webhook set --help`
+
+```
+Set the account inbox webhook URL.
+
+Creates the webhook and returns the signing secret once, or updates the URL and keeps the existing secret.
+
+USAGE
+  1msg inbox webhook set
+
+FLAGS
+      --url <value>               Required
+      --api-key <key>          Or ONE_MSG_PLATFORM_KEY
+      --platform-url <url>     Default https://api.1msg.io
+      --json
+```
+<!-- platform-help:end -->
